@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__figma__whoami",
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_metadata",
+      "mcp__supabase__list_organizations",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__apply_migration",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}
