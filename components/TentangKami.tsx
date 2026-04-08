@@ -35,7 +35,7 @@ export function TentangKami() {
         {/* Main Image */}
         <div className="rounded-[20px] overflow-hidden mb-10 md:mb-14">
           <img
-            src={tentangKamiImgUrl}
+            src="/tentangkami.jpg"
             alt="Tentang Kami"
             className="w-full h-[300px] md:h-[420px] lg:h-[542px] object-cover"
           />

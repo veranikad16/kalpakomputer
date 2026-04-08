@@ -30,7 +30,7 @@ export function Header() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img
-            src={logoUrl}
+            src="/logo.png"
             alt="PT. KALPA KOMPUTER BALI Logo"
             className="h-10 md:h-14 w-auto object-contain"
           />

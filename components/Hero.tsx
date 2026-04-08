@@ -16,7 +16,7 @@ export function Hero() {
       <div className="relative h-[480px] md:h-[620px] lg:h-[680px] w-full overflow-hidden">
         {/* Hero Background */}
         <img
-          src={heroBgUrl}
+          src="/hero.png"
           alt="Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />

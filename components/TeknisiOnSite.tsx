@@ -15,9 +15,9 @@ export function TeknisiOnSite({ onPopupOpen }: TeknisiOnSiteProps) {
         <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-[41px]">
           {/* Content */}
           <div className="flex-1 order-2 lg:order-1">
-            <h2 className="font-black text-[28px] md:text-[36px] text-black mb-6">Booking Teknisi On-Site</h2>
+            <h2 className="font-black text-[28px] md:text-[36px] text-black mb-6">Tracking Status Servis On-Site</h2>
             <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed max-w-[598px]">
-              Layanan booking teknisi on-site untuk menangani perbaikan perangkat dan jaringan langsung di lokasi Anda, dengan jadwal yang fleksibel dan penanganan oleh teknisi berpengalaman.
+              Pantau perkembangan servis on-site Anda secara real-time. Dapatkan informasi terbaru mulai dari proses pengerjaan hingga selesai langsung melalui sistem kami.
             </p>
 
             {/* Features */}
@@ -29,8 +29,8 @@ export function TeknisiOnSite({ onPopupOpen }: TeknisiOnSiteProps) {
                     <RiMapPinLine className="size-6 text-black" />
                   </div>
                 </div>
-                <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">Teknisi Datang ke Lokasi</p>
-                <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Teknisi on-site ke rumah, kantor, atau sekolah, villa, dll.</p>
+                <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">Status Real-Time</p>
+                <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Pantau perkembangan servis on-site Anda secara langsung dengan update status terbaru dari sistem.</p>
               </div>
               <div className="flex flex-col gap-3 max-w-[260px]">
                 <div className="relative size-[50px]">
@@ -39,8 +39,8 @@ export function TeknisiOnSite({ onPopupOpen }: TeknisiOnSiteProps) {
                     <RiCalendarLine className="size-6 text-black" />
                   </div>
                 </div>
-                <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">Booking Mudah & Terjadwal</p>
-                <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Booking teknisi mudah dengan pilihan tanggal dan waktu</p>
+                <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">Teknisi Profesional</p>
+                <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Servis ditangani oleh teknisi berpengalaman untuk memastikan perbaikan berjalan dengan optimal.</p>
               </div>
             </div>
 
@@ -48,14 +48,14 @@ export function TeknisiOnSite({ onPopupOpen }: TeknisiOnSiteProps) {
               onClick={onPopupOpen}
               className="mt-10 bg-[#f2f2f2] hover:bg-[#e0e0e0] text-black font-semibold text-[13px] md:text-[14px] rounded-[10px] px-5 py-3 transition-colors"
             >
-              Booking Teknisi
+              Tracking Status
             </button>
           </div>
 
           {/* Image */}
           <div className="w-full lg:w-[542px] h-[320px] md:h-[420px] lg:h-[508px] rounded-[20px] overflow-hidden shrink-0 order-1 lg:order-2">
             <img
-              src={teknisiImgUrl}
+              src="/teknisi.JPG"
               alt="Booking Teknisi On-Site"
               className="w-full h-full object-cover"
             />

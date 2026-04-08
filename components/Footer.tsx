@@ -12,7 +12,7 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <img
-                src={logoUrl}
+                src="/logo.png"
                 alt="Logo"
                 className="h-10 w-auto object-contain"
               />
