@@ -10,36 +10,27 @@ import { TeknisiOnSite } from "@/components/TeknisiOnSite";
 import { KontakKami } from "@/components/KontakKami";
 import { Footer } from "@/components/Footer";
 import { PopupServis } from "@/components/PopupServis";
-import { PopupBooking } from "@/components/PopupBooking";
+import { PopupOnsite } from "@/components/PopupOnsite";  // ✅ sudah benar
 
 export default function Home() {
   const [popupServisOpen, setPopupServisOpen] = useState(false);
-  const [popupBookingOpen, setPopupBookingOpen] = useState(false);
-
-  const handlePopupOpen = (type: "servis" | "booking") => {
-    if (type === "servis") {
-      setPopupServisOpen(true);
-    } else {
-      setPopupBookingOpen(true);
-    }
-  };
+  const [popupOnsiteOpen, setPopupOnsiteOpen] = useState(false);  // ✅ konsisten
 
   return (
     <main className="min-h-screen">
       <Header />
-
       <Hero />
-
       <TentangKami />
-
       <ProdukUnggulan />
 
-      <Servis onPopupOpen={() => handlePopupOpen("servis")} />
+      <Servis
+        onWorkshopOpen={() => setPopupServisOpen(true)}   // ✅ pisah per tombol
+        onOnsiteOpen={() => setPopupOnsiteOpen(true)}
+      />
 
-      <TeknisiOnSite onPopupOpen={() => handlePopupOpen("booking")} />
+      <TeknisiOnSite onPopupOpen={() => setPopupOnsiteOpen(true)} />
 
       <KontakKami />
-
       <Footer />
 
       {/* Popups */}
@@ -47,9 +38,9 @@ export default function Home() {
         isOpen={popupServisOpen}
         onClose={() => setPopupServisOpen(false)}
       />
-      <PopupBooking
-        isOpen={popupBookingOpen}
-        onClose={() => setPopupBookingOpen(false)}
+      <PopupOnsite
+        isOpen={popupOnsiteOpen}
+        onClose={() => setPopupOnsiteOpen(false)}
       />
     </main>
   );

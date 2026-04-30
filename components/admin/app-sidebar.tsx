@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/admin/ui/sidebar"
-import { RiDashboardLine, RiListUnordered, RiBarChartLine, RiFolderLine, RiGroupLine, RiCameraLine, RiFileTextLine, RiSettingsLine, RiQuestionLine, RiSearchLine, RiDatabase2Line, RiFileChartLine, RiFileLine, RiCommandLine } from "@remixicon/react"
+import { RiDashboardLine, RiListUnordered, RiBarChartLine, RiFolderLine, RiGroupLine, RiCameraLine, RiFileTextLine, RiSettingsLine, RiQuestionLine, RiSearchLine, RiDatabase2Line, RiFileChartLine, RiFileLine, RiCommandLine, RiToolsLine, RiMapPinLine, RiLogoutBoxLine } from "@remixicon/react"
 
 const data = {
   user: {
@@ -26,39 +26,23 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: (
         <RiDashboardLine
         />
       ),
     },
     {
-      title: "Lifecycle",
-      url: "#",
+      title: "Manajemen Produk",
+      url: "/dashboard/produk",
       icon: (
         <RiListUnordered
         />
       ),
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <RiBarChartLine
-        />
-      ),
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: (
-        <RiFolderLine
-        />
-      ),
-    },
-    {
-      title: "Team",
-      url: "#",
+      title: "Manajemen Teknisi",
+      url: "/dashboard/teknisi",
       icon: (
         <RiGroupLine
         />
@@ -132,44 +116,28 @@ const data = {
       ),
     },
     {
-      title: "Get Help",
-      url: "#",
+      title: "Logout",
+      url: "/login",
       icon: (
-        <RiQuestionLine
-        />
-      ),
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: (
-        <RiSearchLine
+        <RiLogoutBoxLine
         />
       ),
     },
   ],
   documents: [
     {
-      name: "Data Library",
-      url: "#",
+      name: "Servis Workshop",
+      url: "/dashboard/servis-workshop",
       icon: (
-        <RiDatabase2Line
+        <RiToolsLine
         />
       ),
     },
     {
-      name: "Reports",
-      url: "#",
+      name: "Servis On-Site",
+      url: "/dashboard/servis-onsite",
       icon: (
-        <RiFileChartLine
-        />
-      ),
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: (
-        <RiFileLine
+        <RiMapPinLine
         />
       ),
     },
@@ -185,8 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<a href="#" />}
             >
-              <RiCommandLine className="size-5!" />
-              <span className="text-base font-semibold">Acme Inc.</span>
+              <span className="text-base font-semibold">DASHBOARD ADMIN</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
