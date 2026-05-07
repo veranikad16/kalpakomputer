@@ -22,8 +22,8 @@ export function NavDocuments({
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Manajemen Layanan Servis</SidebarGroupLabel>
-      <SidebarMenu>
+      <SidebarGroupLabel className="mb-5">Manajemen Layanan Servis</SidebarGroupLabel>
+      <SidebarMenu className="gap-4">
         {items.map((item) => {
           const isActive = pathname === item.url
 

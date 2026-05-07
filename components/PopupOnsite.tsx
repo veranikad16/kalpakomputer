@@ -16,10 +16,16 @@ interface PopupOnsiteProps {
 const JENIS_LOKASI = ["Rumah", "Kantor", "Sekolah", "Villa", "Toko", "Lainnya"];
 const JENIS_PERANGKAT = ["Laptop", "PC / Komputer", "Printer", "Server", "Jaringan", "Lainnya"];
 const JENIS_LAYANAN = ["Perbaikan", "Instalasi", "Maintenance", "Lainnya"];
+const MAX_TEKNISI = 2;
+
+// status yang dianggap teknisi masih aktif/sibuk
+const STATUS_AKTIF = ["Pilih Teknisi", "Dikonfirmasi", "Diproses", "Dalam Perjalanan", "Sedang Dikerjakan"];
 
 export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [tanggalPenuh, setTanggalPenuh] = useState(false);
+  const [checkingTanggal, setCheckingTanggal] = useState(false);
   const [formData, setFormData] = useState({
     nama: "",
     nomor_whatsapp: "",
@@ -35,26 +41,70 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
   if (!isOpen) return null;
 
+  const handleTanggalChange = async (tgl: string) => {
+    setFormData({ ...formData, tanggal_kunjungan: tgl });
+    setTanggalPenuh(false);
+
+    if (!tgl) return;
+
+    setCheckingTanggal(true);
+    try {
+      const { data, error } = await supabase
+        .from("servis_onsite")
+        .select("id, status")
+        .eq("tanggal_kunjungan", tgl)
+        .in("status", STATUS_AKTIF);
+
+      if (error) throw error;
+
+      console.log("Data aktif di tanggal ini:", data);
+      console.log("Jumlah aktif:", data?.length);
+
+      if (data && data.length >= MAX_TEKNISI) {
+        setTanggalPenuh(true);
+      }
+    } catch (err) {
+      console.error("Error checking tanggal:", err);
+    } finally {
+      setCheckingTanggal(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // double-check kapasitas saat submit (hindari race condition)
+      const { data: existing, error: checkError } = await supabase
+        .from("servis_onsite")
+        .select("id")
+        .eq("tanggal_kunjungan", formData.tanggal_kunjungan)
+        .in("status", STATUS_AKTIF);
+
+      if (checkError) throw checkError;
+
+      console.log("Double-check saat submit:", existing);
+
+      if (existing && existing.length >= MAX_TEKNISI) {
+        setTanggalPenuh(true);
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.from("servis_onsite").insert({
-      // hapus kode_order, tidak perlu insert apapun
-      nama: formData.nama,
-      nomor_whatsapp: formData.nomor_whatsapp,
-      alamat: formData.alamat,
-      link_maps: formData.link_maps || null,
-      jenis_lokasi: formData.jenis_lokasi,
-      jenis_perangkat: formData.jenis_perangkat,
-      tipe_merk: formData.tipe_merk,
-      jenis_layanan: formData.jenis_layanan,
-      keluhan: formData.keluhan,
-      tanggal_kunjungan: formData.tanggal_kunjungan,
-      status: "Pilih Teknisi", // ← tambahkan ini juga biar konsisten
-    });
+        nama: formData.nama,
+        nomor_whatsapp: formData.nomor_whatsapp,
+        alamat: formData.alamat,
+        link_maps: formData.link_maps || null,
+        jenis_lokasi: formData.jenis_lokasi,
+        jenis_perangkat: formData.jenis_perangkat,
+        tipe_merk: formData.tipe_merk,
+        jenis_layanan: formData.jenis_layanan,
+        keluhan: formData.keluhan,
+        tanggal_kunjungan: formData.tanggal_kunjungan,
+        status: "Pilih Teknisi",
+      });
 
       if (error) throw error;
 
@@ -62,6 +112,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
       setTimeout(() => {
         setSuccess(false);
+        setTanggalPenuh(false);
         setFormData({
           nama: "",
           nomor_whatsapp: "",
@@ -244,10 +295,22 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
               id="tanggal_kunjungan"
               type="date"
               value={formData.tanggal_kunjungan}
-              onChange={(e) => setFormData({ ...formData, tanggal_kunjungan: e.target.value })}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => handleTanggalChange(e.target.value)}
               required
-              className="mt-1"
+              className={`mt-1 ${tanggalPenuh ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {checkingTanggal && (
+              <p className="text-gray-400 text-sm mt-1 flex items-center gap-1">
+                <RiLoader4Line className="w-3 h-3 animate-spin" />
+                Mengecek ketersediaan...
+              </p>
+            )}
+            {tanggalPenuh && !checkingTanggal && (
+              <p className="text-red-500 text-sm mt-1">
+                ⚠️ Tanggal ini sudah penuh. Semua teknisi sudah ditugaskan. Silakan pilih tanggal lain.
+              </p>
+            )}
           </div>
 
           <p className="text-sm text-gray-500">
@@ -261,7 +324,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
             <Button
               type="submit"
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
-              disabled={loading || success}
+              disabled={loading || success || tanggalPenuh || checkingTanggal}
             >
               {loading ? (
                 <><RiLoader4Line className="w-4 h-4 mr-2 animate-spin" />Mengirim...</>

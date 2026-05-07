@@ -323,7 +323,7 @@ export default function ManajemenProdukPage() {
     const ext = f.name.split(".").pop();
     const filename = `produk/${Date.now()}.${ext}`;
     const { error } = await supabase.storage
-      .from("images") // ganti sesuai nama bucket kamu
+      .from("product-images") // ganti sesuai nama bucket kamu
       .upload(filename, f, { upsert: true });
     if (error) {
       console.error("Upload error:", error);

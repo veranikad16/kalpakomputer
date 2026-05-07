@@ -7,8 +7,22 @@ export function KontakKami() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("Pesan Anda telah dikirim! Kami akan segera menghubungi Anda.");
+  e.preventDefault();
+
+  const waNumber = "628174745137"; // nomor WA tanpa + dan spasi
+    const text = [
+      `Halo, saya ${form.firstName} ${form.lastName}.`,
+      `Email: ${form.email}`,
+      `Telepon: ${form.phone}`,
+      `Subjek: ${form.subject}`,
+      ``,
+      `Pesan:`,
+      form.message,
+    ].join("\n");
+
+    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, "_blank");
+
     setForm({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
   };
 
