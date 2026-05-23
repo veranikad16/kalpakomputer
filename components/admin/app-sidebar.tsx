@@ -109,7 +109,7 @@ const data = {
   navSecondary: [
     {
       title: "Logout",
-      url: "/login",
+      url: "/login-admin",
       icon: (
         <RiLogoutBoxLine
         />
@@ -156,7 +156,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
   )

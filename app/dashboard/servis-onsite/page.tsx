@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/admin/ui/button";
 import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
 import {
   RiSearchLine,
   RiMore2Line,
@@ -11,6 +12,7 @@ import {
   RiCloseLine,
   RiDeleteBinLine,
   RiUserLine,
+  RiEditLine,
 } from "@remixicon/react";
 import {
   DropdownMenu,
@@ -55,23 +57,62 @@ interface Teknisi {
   nomor_whatsapp: string;
 }
 
+interface EditForm {
+  nama: string;
+  nomor_whatsapp: string;
+  alamat: string;
+  link_maps: string;
+  jenis_lokasi: string;
+  jenis_perangkat: string;
+  tipe_merk: string;
+  jenis_layanan: string;
+  keluhan: string;
+  tanggal_kunjungan: string;
+}
+
+const emptyEditForm: EditForm = {
+  nama: "",
+  nomor_whatsapp: "",
+  alamat: "",
+  link_maps: "",
+  jenis_lokasi: "",
+  jenis_perangkat: "",
+  tipe_merk: "",
+  jenis_layanan: "",
+  keluhan: "",
+  tanggal_kunjungan: "",
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_LIST = [
   "Pilih Teknisi",
   "Dikonfirmasi",
+  "Berangkat",
   "Diproses",
   "Selesai",
+  "Dibatalkan",
+];
+
+const STATUS_ADMIN_SELECTABLE = [
+  "Pilih Teknisi",
+  "Dikonfirmasi",
+  "Berangkat",
   "Dibatalkan",
 ];
 
 const statusStyle: Record<string, string> = {
   "Pilih Teknisi": "bg-yellow-500/10 text-yellow-600",
   Dikonfirmasi: "bg-blue-500/10 text-blue-600",
+  Berangkat: "bg-purple-500/10 text-purple-600",
   Diproses: "bg-orange-500/10 text-orange-600",
   Selesai: "bg-green-500/10 text-green-600",
   Dibatalkan: "bg-red-500/10 text-red-600",
 };
+
+const JENIS_LOKASI_LIST = ["Rumah", "Kantor", "Toko", "Villa", "Sekolah", "Lainnya"];
+const JENIS_PERANGKAT_LIST = ["Laptop", "PC / Komputer", "Printer", "Server", "Lainnya"];
+const JENIS_LAYANAN_LIST = ["Perbaikan", "Instalasi", "Maintenance", "Lainnya"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,6 +127,17 @@ function formatDate(dateStr: string | null) {
 
 function generateKodeTracking(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+function isStatusDisabled(
+  option: string,
+  currentStatus: string,
+  teknisiId: string | null
+): boolean {
+  if (option === currentStatus) return false;
+  if (!STATUS_ADMIN_SELECTABLE.includes(option)) return true;
+  if (option === "Pilih Teknisi" && teknisiId !== null) return true;
+  return false;
 }
 
 function buildKonfirmasiMessage(data: {
@@ -127,11 +179,220 @@ Jika ada pertanyaan, silakan hubungi kami. Terima kasih 🙏
 
 function buildStatusUpdateMessage(nama: string, status: string) {
   const pesanStatus: Record<string, string> = {
+    Berangkat: `Halo ${nama} 👋\n\nKabar gembira! Teknisi kami sedang *dalam perjalanan* menuju lokasi Anda 🚗💨\n\nMohon bersiap untuk menyambut kedatangan teknisi kami. Jika ada pertanyaan, silakan hubungi kami.\n\nTerima kasih 🙏\n– PT. Kalpa Komputer Bali`,
     Diproses: `Halo ${nama} 👋\n\nTeknisi kami sedang *mengerjakan* servis perangkat Anda. 🔧\n\nTerima kasih telah menunggu!`,
     Selesai: `Halo ${nama} 👋\n\nServis perangkat Anda telah *selesai* ✅\n\nTerima kasih telah menggunakan layanan kami 🙏\n– PT. Kalpa Komputer Bali`,
     Dibatalkan: `Halo ${nama} 👋\n\nMohon maaf, ajuan servis Anda telah *dibatalkan* ❌\n\nSilakan hubungi kami untuk informasi lebih lanjut.\n– PT. Kalpa Komputer Bali`,
   };
   return pesanStatus[status] ?? "";
+}
+
+// ─── Modal Edit Ajuan ─────────────────────────────────────────────────────────
+
+function EditAjuanModal({
+  open,
+  onClose,
+  onSave,
+  initial,
+  loading,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: EditForm) => Promise<void>;
+  initial: EditForm;
+  loading: boolean;
+}) {
+  const [form, setForm] = useState<EditForm>(emptyEditForm);
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(initial); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChange = (field: keyof EditForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const textareaClass =
+    "w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none dark:bg-input/30";
+  const selectClass =
+    "w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-lg mx-4 bg-background border border-border rounded-xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-foreground">
+            Edit Ajuan Servis On-Site
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <RiCloseLine className="size-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+          {/* Nama */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-nama">Nama Pelanggan</Label>
+            <Input
+              id="edit-nama"
+              placeholder="Nama lengkap"
+              value={form.nama}
+              onChange={(e) => handleChange("nama", e.target.value)}
+            />
+          </div>
+
+          {/* Nomor WhatsApp */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-wa">Nomor WhatsApp</Label>
+            <Input
+              id="edit-wa"
+              placeholder="628xxxxxxx"
+              value={form.nomor_whatsapp}
+              onChange={(e) => handleChange("nomor_whatsapp", e.target.value)}
+            />
+          </div>
+
+          {/* Alamat */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-alamat">Alamat</Label>
+            <textarea
+              id="edit-alamat"
+              rows={2}
+              placeholder="Alamat lengkap"
+              value={form.alamat}
+              onChange={(e) => handleChange("alamat", e.target.value)}
+              className={textareaClass}
+            />
+          </div>
+
+          {/* Link Maps & Jenis Lokasi */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-maps">Link Google Maps</Label>
+              <Input
+                id="edit-maps"
+                placeholder="https://maps.google.com/..."
+                value={form.link_maps}
+                onChange={(e) => handleChange("link_maps", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-lokasi">Jenis Lokasi</Label>
+              <select
+                id="edit-lokasi"
+                value={form.jenis_lokasi}
+                onChange={(e) => handleChange("jenis_lokasi", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Pilih lokasi</option>
+                {JENIS_LOKASI_LIST.map((j) => (
+                  <option key={j} value={j}>{j}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Jenis Perangkat & Merk/Tipe */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-perangkat">Jenis Perangkat</Label>
+              <select
+                id="edit-perangkat"
+                value={form.jenis_perangkat}
+                onChange={(e) => handleChange("jenis_perangkat", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Pilih perangkat</option>
+                {JENIS_PERANGKAT_LIST.map((j) => (
+                  <option key={j} value={j}>{j}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-merk">Merk / Tipe</Label>
+              <Input
+                id="edit-merk"
+                placeholder="Contoh: HP 1440"
+                value={form.tipe_merk}
+                onChange={(e) => handleChange("tipe_merk", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Jenis Layanan & Tanggal Kunjungan */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-layanan">Jenis Layanan</Label>
+              <select
+                id="edit-layanan"
+                value={form.jenis_layanan}
+                onChange={(e) => handleChange("jenis_layanan", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Pilih layanan</option>
+                {JENIS_LAYANAN_LIST.map((j) => (
+                  <option key={j} value={j}>{j}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-tanggal">Tanggal Kunjungan</Label>
+              <Input
+                id="edit-tanggal"
+                type="date"
+                value={form.tanggal_kunjungan}
+                onChange={(e) => handleChange("tanggal_kunjungan", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Keluhan */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-keluhan">Keluhan</Label>
+            <textarea
+              id="edit-keluhan"
+              rows={3}
+              placeholder="Deskripsikan keluhan pelanggan..."
+              value={form.keluhan}
+              onChange={(e) => handleChange("keluhan", e.target.value)}
+              className={textareaClass}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Batal
+          </Button>
+          <Button
+            onClick={() => onSave(form)}
+            disabled={
+              loading ||
+              !form.nama ||
+              !form.nomor_whatsapp ||
+              !form.alamat ||
+              !form.tanggal_kunjungan
+            }
+          >
+            {loading ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Modal Assign Teknisi ─────────────────────────────────────────────────────
@@ -211,7 +472,6 @@ function AssignTeknisiModal({
         onClick={onClose}
       />
       <div className="relative z-10 w-full max-w-md mx-4 bg-background border border-border rounded-xl shadow-xl overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <h2 className="text-base font-semibold text-foreground">
@@ -229,7 +489,6 @@ function AssignTeknisiModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="px-6 py-4 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
           {warning && (
             <div className="text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
@@ -256,12 +515,8 @@ function AssignTeknisiModal({
                     <RiUserLine className="size-4 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {t.nama}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.nomor_whatsapp}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{t.nama}</p>
+                    <p className="text-xs text-muted-foreground">{t.nomor_whatsapp}</p>
                   </div>
                   <span className="ml-auto text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
                     Tersedia
@@ -290,12 +545,8 @@ function AssignTeknisiModal({
                     <RiUserLine className="size-4 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {t.nama}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.nomor_whatsapp}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{t.nama}</p>
+                    <p className="text-xs text-muted-foreground">{t.nomor_whatsapp}</p>
                   </div>
                   <span className="ml-auto text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full">
                     Sibuk
@@ -312,7 +563,6 @@ function AssignTeknisiModal({
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Batal
@@ -338,6 +588,10 @@ export default function ServisOnsitePage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<ServisOnsite | null>(null);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ServisOnsite | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ServisOnsite | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -358,7 +612,7 @@ export default function ServisOnsitePage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
+    fetchData(); 
   }, [fetchData]);
 
   const filtered = servisList.filter((s) => {
@@ -372,13 +626,12 @@ export default function ServisOnsitePage() {
     return matchSearch && matchStatus;
   });
 
-  // ── Assign teknisi + generate kode_tracking ──────────────────────────────
+  // ── Assign teknisi ───────────────────────────────────────────────────────
   const handleAssign = async (teknisiId: string) => {
     if (!assignTarget) return;
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
 
-    // Generate kode tracking baru
     const kodeTracking = generateKodeTracking();
 
     const { error } = await supabase
@@ -412,8 +665,43 @@ export default function ServisOnsitePage() {
     await fetchData();
   };
 
+  // ── Edit ajuan ───────────────────────────────────────────────────────────
+  const handleEdit = async (form: EditForm) => {
+    if (!editTarget) return;
+    setEditLoading(true);
+    const { error } = await supabase
+      .from("servis_onsite")
+      .update({
+        nama: form.nama,
+        nomor_whatsapp: form.nomor_whatsapp,
+        alamat: form.alamat,
+        link_maps: form.link_maps || null,
+        jenis_lokasi: form.jenis_lokasi,
+        jenis_perangkat: form.jenis_perangkat,
+        tipe_merk: form.tipe_merk,
+        jenis_layanan: form.jenis_layanan,
+        keluhan: form.keluhan,
+        tanggal_kunjungan: form.tanggal_kunjungan,
+      })
+      .eq("id", editTarget.id);
+
+    if (error) {
+      alert("Gagal menyimpan: " + error.message);
+      setEditLoading(false);
+      return;
+    }
+
+    await fetchData();
+    setEditLoading(false);
+    setEditOpen(false);
+    setEditTarget(null);
+  };
+
   // ── Update status ────────────────────────────────────────────────────────
-  const handleUpdateStatus = async (servis: ServisOnsite, newStatus: string) => {
+  const handleUpdateStatus = async (
+    servis: ServisOnsite,
+    newStatus: string
+  ) => {
     const { error } = await supabase
       .from("servis_onsite")
       .update({ status: newStatus })
@@ -447,6 +735,21 @@ export default function ServisOnsitePage() {
     if (!teknisiId) return null;
     return teknisiList.find((t) => t.id === teknisiId)?.nama ?? null;
   };
+
+  const editInitial: EditForm = editTarget
+    ? {
+        nama: editTarget.nama,
+        nomor_whatsapp: editTarget.nomor_whatsapp,
+        alamat: editTarget.alamat,
+        link_maps: editTarget.link_maps ?? "",
+        jenis_lokasi: editTarget.jenis_lokasi,
+        jenis_perangkat: editTarget.jenis_perangkat,
+        tipe_merk: editTarget.tipe_merk,
+        jenis_layanan: editTarget.jenis_layanan,
+        keluhan: editTarget.keluhan,
+        tanggal_kunjungan: editTarget.tanggal_kunjungan,
+      }
+    : emptyEditForm;
 
   return (
     <>
@@ -540,7 +843,9 @@ export default function ServisOnsitePage() {
                 filtered.map((servis) => (
                   <TableRow key={servis.id}>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground whitespace-normal break-words">{servis.nama}</span>
+                      <span className="text-xs text-muted-foreground whitespace-normal break-words">
+                        {servis.nama}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-muted-foreground">
@@ -598,9 +903,15 @@ export default function ServisOnsitePage() {
                     {/* Teknisi */}
                     <TableCell>
                       {getTeknisiNama(servis.teknisi_id) ? (
-                        <span className="text-sm font-medium text-blue-600">
+                        <button
+                          onClick={() => {
+                            setAssignTarget(servis);
+                            setAssignOpen(true);
+                          }}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                        >
                           {getTeknisiNama(servis.teknisi_id)}
-                        </span>
+                        </button>
                       ) : (
                         <button
                           onClick={() => {
@@ -621,10 +932,18 @@ export default function ServisOnsitePage() {
                         onChange={(e) =>
                           handleUpdateStatus(servis, e.target.value)
                         }
-                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors ${statusStyle[servis.status]}`}
+                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${statusStyle[servis.status] ?? ""}`}
                       >
                         {STATUS_LIST.map((s) => (
-                          <option key={s} value={s}>
+                          <option
+                            key={s}
+                            value={s}
+                            disabled={isStatusDisabled(
+                              s,
+                              servis.status,
+                              servis.teknisi_id
+                            )}
+                          >
                             {s}
                           </option>
                         ))}
@@ -648,12 +967,12 @@ export default function ServisOnsitePage() {
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem
                             onClick={() => {
-                              setAssignTarget(servis);
-                              setAssignOpen(true);
+                              setEditTarget(servis);
+                              setEditOpen(true);
                             }}
                           >
-                            <RiUserLine className="size-4" />
-                            Pilih Teknisi
+                            <RiEditLine className="size-4" />
+                            Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -693,6 +1012,18 @@ export default function ServisOnsitePage() {
         servis={assignTarget}
         teknisiList={teknisiList}
         onAssign={handleAssign}
+      />
+
+      {/* Modal Edit Ajuan */}
+      <EditAjuanModal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditTarget(null);
+        }}
+        onSave={handleEdit}
+        initial={editInitial}
+        loading={editLoading}
       />
 
       {/* Modal Hapus */}

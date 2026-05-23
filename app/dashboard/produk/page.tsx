@@ -13,6 +13,7 @@ import {
   RiImageLine,
   RiCloseLine,
   RiMore2Line,
+  RiDraggable,
 } from "@remixicon/react";
 import {
   DropdownMenu,
@@ -30,6 +31,10 @@ import {
   TableRow,
 } from "@/components/admin/ui/table";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const MAX_IMAGES = 8;
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Produk {
@@ -38,7 +43,7 @@ interface Produk {
   harga: string;
   kategori: string;
   deskripsi: string | null;
-  gambar_url: string | null;
+  gambar_urls: string[];
   tampil_di_homepage: boolean;
 }
 
@@ -47,8 +52,15 @@ interface ProdukForm {
   harga: string;
   kategori: string;
   deskripsi: string;
-  gambar_url: string;
+  gambar_urls: string[];
   tampil_di_homepage: boolean;
+}
+
+// Slot bisa berisi gambar yang sudah ada (URL) atau file baru
+interface ImageSlot {
+  id: string; // unik untuk key React
+  url: string; // URL preview (object URL atau URL supabase)
+  file: File | null; // null = sudah ada di supabase, File = baru
 }
 
 const emptyForm: ProdukForm = {
@@ -56,9 +68,135 @@ const emptyForm: ProdukForm = {
   harga: "",
   kategori: "",
   deskripsi: "",
-  gambar_url: "",
+  gambar_urls: [],
   tampil_di_homepage: false,
 };
+
+// ─── ImageGrid ────────────────────────────────────────────────────────────────
+
+function ImageGrid({
+  slots,
+  onChange,
+}: {
+  slots: ImageSlot[];
+  onChange: (slots: ImageSlot[]) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const dragOverIndexRef = useRef<number | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    const remaining = MAX_IMAGES - slots.length;
+    const toAdd = files.slice(0, remaining);
+
+    const newSlots: ImageSlot[] = toAdd.map((f) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      url: URL.createObjectURL(f),
+      file: f,
+    }));
+
+    onChange([...slots, ...newSlots]);
+    e.target.value = "";
+  };
+
+  const removeSlot = (index: number) => {
+    const next = [...slots];
+    if (next[index].file) URL.revokeObjectURL(next[index].url);
+    next.splice(index, 1);
+    onChange(next);
+  };
+
+  // ── Drag-and-drop reorder ──────────────────────────────────────────────────
+
+  const onDragStart = (i: number) => { dragIndexRef.current = i; };
+  const onDragEnter = (i: number) => { dragOverIndexRef.current = i; };
+  const onDragEnd = () => {
+    const from = dragIndexRef.current;
+    const to = dragOverIndexRef.current;
+    if (from === null || to === null || from === to) return;
+    const next = [...slots];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+    dragIndexRef.current = null;
+    dragOverIndexRef.current = null;
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-4 gap-2">
+        {slots.map((slot, i) => (
+          <div
+            key={slot.id}
+            draggable
+            onDragStart={() => onDragStart(i)}
+            onDragEnter={() => onDragEnter(i)}
+            onDragEnd={onDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className="relative group aspect-square rounded-lg border border-border bg-muted/30 overflow-hidden cursor-grab active:cursor-grabbing"
+          >
+            <img
+              src={slot.url}
+              alt={`Foto ${i + 1}`}
+              className="w-full h-full object-cover"
+            />
+
+            {/* Badge utama */}
+            {i === 0 && (
+              <span className="absolute top-1.5 left-1.5 text-[10px] font-medium bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none pointer-events-none">
+                Utama
+              </span>
+            )}
+
+            {/* Drag handle hint */}
+            <div className="absolute top-1.5 right-7 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <div className="bg-black/50 rounded p-0.5">
+                <RiDraggable className="size-3 text-white" />
+              </div>
+            </div>
+
+            {/* Tombol hapus */}
+            <button
+              type="button"
+              onClick={() => removeSlot(i)}
+              className="absolute top-1 right-1 size-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+            >
+              <RiCloseLine className="size-3 text-white" />
+            </button>
+          </div>
+        ))}
+
+        {/* Slot tambah */}
+        {slots.length < MAX_IMAGES && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="aspect-square rounded-lg border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-1 hover:bg-muted/40 transition-colors text-muted-foreground"
+          >
+            <RiAddLine className="size-5" />
+            <span className="text-[11px]">Tambah</span>
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      <p className="text-xs text-muted-foreground text-right">
+        {slots.length} / {MAX_IMAGES} foto · Seret untuk urutkan · Foto pertama jadi gambar utama
+      </p>
+    </div>
+  );
+}
 
 // ─── Modal Tambah/Edit ────────────────────────────────────────────────────────
 
@@ -71,32 +209,42 @@ function ProdukModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: ProdukForm, file: File | null) => Promise<void>;
+  onSave: (data: ProdukForm, newFiles: { index: number; file: File }[]) => Promise<void>;
   initial: ProdukForm;
   loading: boolean;
 }) {
   const [form, setForm] = useState<ProdukForm>(emptyForm);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [file, setFile] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [slots, setSlots] = useState<ImageSlot[]>([]);
 
-  // Reset form setiap kali modal dibuka
   useEffect(() => {
     if (!open) return;
-    setForm(initial); // eslint-disable-line react-hooks/set-state-in-effect
-    setPreviewUrl(initial.gambar_url ?? ""); // eslint-disable-line react-hooks/set-state-in-effect
-    setFile(null); // eslint-disable-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm(initial); 
+    setSlots(
+      (initial.gambar_urls ?? []).map((url) => ({
+        id: `existing-${url}`,
+        url,
+        file: null,
+      }))
+    );
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (field: keyof ProdukForm, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
+  const handleSubmit = async () => {
+    // File baru beserta posisi slot-nya
+    const newFiles = slots
+      .map((slot, index) => ({ index, file: slot.file }))
+      .filter((item): item is { index: number; file: File } => item.file !== null);
+
+    // URL yang sudah ada di supabase (bukan object URL)
+    const existingUrls = slots
+      .filter((slot) => slot.file === null)
+      .map((slot) => slot.url);
+
+    await onSave({ ...form, gambar_urls: existingUrls }, newFiles);
   };
 
   if (!open) return null;
@@ -119,39 +267,11 @@ function ProdukModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-          {/* Gambar */}
+        <div className="px-6 py-5 flex flex-col gap-4 max-h-[72vh] overflow-y-auto">
+          {/* Foto produk */}
           <div className="flex flex-col gap-2">
-            <Label>Gambar Produk</Label>
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="relative w-full h-44 rounded-lg border-2 border-dashed border-border bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden"
-            >
-              {previewUrl ? (
-                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <RiImageLine className="size-8" />
-                  <span className="text-sm">Klik untuk upload gambar</span>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFile}
-            />
-            <Input
-              placeholder="Atau masukkan URL gambar"
-              value={file ? "" : form.gambar_url}
-              onChange={(e) => {
-                setFile(null);
-                setPreviewUrl(e.target.value);
-                handleChange("gambar_url", e.target.value);
-              }}
-            />
+            <Label>Foto Produk</Label>
+            <ImageGrid slots={slots} onChange={setSlots} />
           </div>
 
           {/* Nama */}
@@ -221,7 +341,7 @@ function ProdukModal({
             Batal
           </Button>
           <Button
-            onClick={() => onSave(form, file)}
+            onClick={handleSubmit}
             disabled={loading || !form.nama || !form.harga}
           >
             {loading ? "Menyimpan..." : "Simpan"}
@@ -306,7 +426,8 @@ export default function ManajemenProdukPage() {
   }, []);
 
   useEffect(() => {
-    fetchProducts(); // eslint-disable-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProducts(); 
   }, [fetchProducts]);
 
   // ── Filter ─────────────────────────────────────────────────────────────────
@@ -320,44 +441,61 @@ export default function ManajemenProdukPage() {
   // ── Upload gambar ──────────────────────────────────────────────────────────
 
   const uploadGambar = async (f: File): Promise<string | null> => {
-    const ext = f.name.split(".").pop();
-    const filename = `produk/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("product-images") // ganti sesuai nama bucket kamu
-      .upload(filename, f, { upsert: true });
-    if (error) {
-      console.error("Upload error:", error);
-      return null;
-    }
-    const { data } = supabase.storage.from("images").getPublicUrl(filename);
-    return data.publicUrl;
+    const formData = new FormData();
+    formData.append("file", f);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const json = await res.json();
+    if (!res.ok) { console.error("Upload error:", json.error); return null; }
+    return json.url as string;
   };
 
   // ── Simpan ─────────────────────────────────────────────────────────────────
 
-  const handleSave = async (form: ProdukForm, file: File | null) => {
+  const handleSave = async (
+    form: ProdukForm,
+    newFiles: { index: number; file: File }[]
+  ) => {
     setModalLoading(true);
 
-    let gambar_url = form.gambar_url || null;
-    if (file) {
-      const uploaded = await uploadGambar(file);
-      if (uploaded) gambar_url = uploaded;
+    // Upload semua file baru secara paralel
+    const uploadResults = await Promise.all(
+      newFiles.map(async ({ index, file }) => ({
+        index,
+        url: await uploadGambar(file),
+      }))
+    );
+
+    // Rekonstruksi array URL final dengan urutan slot yang benar.
+    // form.gambar_urls = URL existing (dalam urutan slot)
+    // newFiles[].index = posisi slot file baru di array gabungan
+    const totalSlots = form.gambar_urls.length + newFiles.length;
+    const finalUrls: string[] = new Array(totalSlots).fill("");
+
+    for (const { index, url } of uploadResults) {
+      if (url) finalUrls[index] = url;
     }
+
+    let existingCursor = 0;
+    for (let i = 0; i < totalSlots; i++) {
+      if (finalUrls[i] === "") {
+        finalUrls[i] = form.gambar_urls[existingCursor] ?? "";
+        existingCursor++;
+      }
+    }
+
+    const cleanUrls = finalUrls.filter(Boolean);
 
     const payload = {
       nama: form.nama,
       harga: form.harga,
       kategori: form.kategori,
       deskripsi: form.deskripsi || null,
-      gambar_url,
+      gambar_urls: cleanUrls,
       tampil_di_homepage: form.tampil_di_homepage,
     };
 
     if (editTarget) {
-      const { error } = await supabase
-        .from("produk")
-        .update(payload)
-        .eq("id", editTarget.id);
+      const { error } = await supabase.from("produk").update(payload).eq("id", editTarget.id);
       if (error) console.error(error);
     } else {
       const { error } = await supabase.from("produk").insert([payload]);
@@ -375,10 +513,7 @@ export default function ManajemenProdukPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
-    const { error } = await supabase
-      .from("produk")
-      .delete()
-      .eq("id", deleteTarget.id);
+    const { error } = await supabase.from("produk").delete().eq("id", deleteTarget.id);
     if (error) console.error(error);
     await fetchProducts();
     setDeleteLoading(false);
@@ -398,7 +533,7 @@ export default function ManajemenProdukPage() {
         harga: editTarget.harga,
         kategori: editTarget.kategori,
         deskripsi: editTarget.deskripsi ?? "",
-        gambar_url: editTarget.gambar_url ?? "",
+        gambar_urls: editTarget.gambar_urls ?? [],
         tampil_di_homepage: editTarget.tampil_di_homepage,
       }
     : emptyForm;
@@ -438,7 +573,7 @@ export default function ManajemenProdukPage() {
           <Table>
             <TableHeader className="bg-muted sticky top-0 z-10">
               <TableRow>
-                <TableHead className="w-16">Gambar</TableHead>
+                <TableHead className="w-16">Foto</TableHead>
                 <TableHead>Nama Produk</TableHead>
                 <TableHead>Kategori</TableHead>
                 <TableHead>Harga</TableHead>
@@ -460,78 +595,78 @@ export default function ManajemenProdukPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((produk) => (
-                  <TableRow key={produk.id}>
-                    <TableCell>
-                      <div className="size-12 rounded-md bg-muted overflow-hidden flex items-center justify-center">
-                        {produk.gambar_url ? (
-                          <img
-                            src={produk.gambar_url}
-                            alt={produk.nama}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <RiImageLine className="size-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm text-foreground">{produk.nama}</span>
-                        {produk.deskripsi && (
-                          <span className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                            {produk.deskripsi}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                        {produk.kategori || "-"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-medium text-sm">{produk.harga}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        produk.tampil_di_homepage
-                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                          : "bg-muted text-muted-foreground"
-                      }`}>
-                        {produk.tampil_di_homepage ? "Tampil" : "Tidak"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground"
-                            />
-                          }
-                        >
-                          <RiMore2Line />
-                          <span className="sr-only">Aksi</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem onClick={() => openEdit(produk)}>
-                            <RiEditLine className="size-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => openDelete(produk)}
+                filtered.map((produk) => {
+                  const coverUrl = produk.gambar_urls?.[0] ?? null;
+                  const extraCount = (produk.gambar_urls?.length ?? 0) - 1;
+                  return (
+                    <TableRow key={produk.id}>
+                      <TableCell>
+                        <div className="relative size-12 rounded-md bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {coverUrl ? (
+                            <>
+                              <img src={coverUrl} alt={produk.nama} className="w-full h-full object-cover" />
+                              {extraCount > 0 && (
+                                <span className="absolute bottom-0.5 right-0.5 text-[9px] font-medium bg-black/60 text-white px-1 rounded leading-tight">
+                                  +{extraCount}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <RiImageLine className="size-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm text-foreground">{produk.nama}</span>
+                          {produk.deskripsi && (
+                            <span className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {produk.deskripsi}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                          {produk.kategori || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{produk.harga}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          produk.tampil_di_homepage
+                            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          {produk.tampil_di_homepage ? "Tampil" : "Tidak"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" />
+                            }
                           >
-                            <RiDeleteBinLine className="size-4" />
-                            Hapus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                            <RiMore2Line />
+                            <span className="sr-only">Aksi</span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem onClick={() => openEdit(produk)}>
+                              <RiEditLine className="size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" onClick={() => openDelete(produk)}>
+                              <RiDeleteBinLine className="size-4" />
+                              Hapus
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
