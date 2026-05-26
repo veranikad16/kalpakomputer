@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/admin/ui/button";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import { UpdateStatusServis } from "@/components/UpdateStatusServis";
+import { buildWhatsAppMessage, sendWhatsApp } from "@/lib/whatsapp";
 import {
   RiAddLine,
   RiEditLine,
@@ -44,6 +44,7 @@ interface Servis {
   target_selesai: string | null;
   status: string;
   catatan_admin: string | null;
+  kode_tracking: string | null;
   created_at: string;
 }
 
@@ -73,6 +74,7 @@ const emptyForm: ServisForm = {
 
 const STATUS_LIST = [
   "Menunggu Konfirmasi",
+  "Dikonfirmasi",
   "Diproses",
   "Selesai",
   "Dibatalkan",
@@ -80,10 +82,26 @@ const STATUS_LIST = [
 
 const statusStyle: Record<string, string> = {
   "Menunggu Konfirmasi": "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  "Diproses": "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  "Selesai": "bg-green-500/10 text-green-600 dark:text-green-400",
-  "Dibatalkan": "bg-red-500/10 text-red-600 dark:text-red-400",
+  Dikonfirmasi: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  Diproses: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  Selesai: "bg-green-500/10 text-green-600 dark:text-green-400",
+  Dibatalkan: "bg-red-500/10 text-red-600 dark:text-red-400",
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "-";
+  return new Date(dateStr).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function generateKodeTracking(): string {
+  return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
 
 // ─── Modal Tambah/Edit ────────────────────────────────────────────────────────
 
@@ -115,14 +133,20 @@ function ServisModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative z-10 w-full max-w-lg mx-4 bg-background border border-border rounded-xl shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">
             {initial.nama ? "Edit Servis" : "Tambah Servis"}
           </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <RiCloseLine className="size-5" />
           </button>
         </div>
@@ -159,7 +183,9 @@ function ServisModal({
                 id="jenis"
                 placeholder="Contoh: Laptop"
                 value={form.jenis_perangkat}
-                onChange={(e) => handleChange("jenis_perangkat", e.target.value)}
+                onChange={(e) =>
+                  handleChange("jenis_perangkat", e.target.value)
+                }
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -203,7 +229,9 @@ function ServisModal({
                 id="target"
                 type="date"
                 value={form.target_selesai}
-                onChange={(e) => handleChange("target_selesai", e.target.value)}
+                onChange={(e) =>
+                  handleChange("target_selesai", e.target.value)
+                }
               />
             </div>
           </div>
@@ -218,7 +246,9 @@ function ServisModal({
               className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
               {STATUS_LIST.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
@@ -239,10 +269,19 @@ function ServisModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
-          <Button variant="outline" onClick={onClose} disabled={loading}>Batal</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Batal
+          </Button>
           <Button
             onClick={() => onSave(form)}
-            disabled={loading || !form.nama || !form.nomor_whatsapp || !form.jenis_perangkat || !form.keluhan || !form.tanggal_masuk}
+            disabled={
+              loading ||
+              !form.nama ||
+              !form.nomor_whatsapp ||
+              !form.jenis_perangkat ||
+              !form.keluhan ||
+              !form.tanggal_masuk
+            }
           >
             {loading ? "Menyimpan..." : "Simpan"}
           </Button>
@@ -270,18 +309,27 @@ function DeleteModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative z-10 w-full max-w-sm mx-4 bg-background border border-border rounded-xl shadow-xl p-6 flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold text-foreground">Hapus Data Servis</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Hapus Data Servis
+          </h2>
           <p className="text-sm text-muted-foreground">
             Yakin ingin menghapus data servis milik{" "}
-            <span className="font-medium text-foreground">&quot;{nama}&quot;</span>?
-            Tindakan ini tidak bisa dibatalkan.
+            <span className="font-medium text-foreground">
+              &quot;{nama}&quot;
+            </span>
+            ? Tindakan ini tidak bisa dibatalkan.
           </p>
         </div>
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={loading}>Batal</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Batal
+          </Button>
           <Button
             variant="destructive"
             onClick={onConfirm}
@@ -294,17 +342,6 @@ function DeleteModal({
       </div>
     </div>
   );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -346,7 +383,8 @@ export default function ServisWorkshopPage() {
       s.nama.toLowerCase().includes(search.toLowerCase()) ||
       s.jenis_perangkat.toLowerCase().includes(search.toLowerCase()) ||
       s.tipe_merk.toLowerCase().includes(search.toLowerCase()) ||
-      s.nomor_whatsapp.includes(search);
+      s.nomor_whatsapp.includes(search) ||
+      (s.kode_tracking ?? "").toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "Semua" || s.status === filterStatus;
     return matchSearch && matchStatus;
   });
@@ -356,7 +394,13 @@ export default function ServisWorkshopPage() {
   const handleSave = async (form: ServisForm) => {
     setModalLoading(true);
 
-    const payload = {
+    // Jika tambah baru dan status bukan "Menunggu Konfirmasi",
+    // generate kode tracking langsung saat insert.
+    // Jika edit, kode tracking tidak diubah lewat modal ini.
+    const isNew = !editTarget;
+    const needsKode = isNew && form.status === "Dikonfirmasi";
+
+    const payload: Record<string, unknown> = {
       nama: form.nama,
       nomor_whatsapp: form.nomor_whatsapp,
       jenis_perangkat: form.jenis_perangkat,
@@ -365,7 +409,12 @@ export default function ServisWorkshopPage() {
       tanggal_masuk: form.tanggal_masuk,
       target_selesai: form.target_selesai || null,
       status: form.status,
+      catatan_admin: form.catatan_admin || null,
     };
+
+    if (needsKode) {
+      payload.kode_tracking = generateKodeTracking();
+    }
 
     if (editTarget) {
       const { error } = await supabase
@@ -374,7 +423,9 @@ export default function ServisWorkshopPage() {
         .eq("id", editTarget.id);
       if (error) console.error(error);
     } else {
-      const { error } = await supabase.from("servis_workshop").insert([payload]);
+      const { error } = await supabase
+        .from("servis_workshop")
+        .insert([payload]);
       if (error) console.error(error);
     }
 
@@ -382,6 +433,47 @@ export default function ServisWorkshopPage() {
     setModalLoading(false);
     setModalOpen(false);
     setEditTarget(null);
+  };
+
+  // ── Update Status ──────────────────────────────────────────────────────────
+
+  const handleStatusChange = async (servis: Servis, newStatus: string) => {
+    if (newStatus === servis.status) return;
+
+    const updatePayload: Record<string, unknown> = { status: newStatus };
+
+    // Generate kode tracking saat pertama kali dikonfirmasi
+    if (newStatus === "Dikonfirmasi" && !servis.kode_tracking) {
+      updatePayload.kode_tracking = generateKodeTracking();
+    }
+
+    const { error } = await supabase
+      .from("servis_workshop")
+      .update(updatePayload)
+      .eq("id", servis.id);
+
+    if (error) {
+      console.error("Gagal update status:", error);
+      return;
+    }
+
+    // Kirim WA hanya saat Dikonfirmasi (1x notif ke pelanggan)
+    if (newStatus === "Dikonfirmasi") {
+      const kode = (updatePayload.kode_tracking as string) ?? servis.kode_tracking ?? "";
+      const pesan =
+        buildWhatsAppMessage({
+          nama: servis.nama,
+          jenis_perangkat: servis.jenis_perangkat,
+          tipe_merk: servis.tipe_merk,
+          keluhan: servis.keluhan,
+          tanggal_masuk: formatDate(servis.tanggal_masuk),
+          target_selesai: formatDate(servis.target_selesai),
+        }) +
+        `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kode}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
+      sendWhatsApp(servis.nomor_whatsapp, pesan);
+    }
+
+    await fetchServis();
   };
 
   // ── Hapus ──────────────────────────────────────────────────────────────────
@@ -402,9 +494,18 @@ export default function ServisWorkshopPage() {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  const openEdit = (servis: Servis) => { setEditTarget(servis); setModalOpen(true); };
-  const openDelete = (servis: Servis) => { setDeleteTarget(servis); setDeleteOpen(true); };
-  const openAdd = () => { setEditTarget(null); setModalOpen(true); };
+  const openEdit = (servis: Servis) => {
+    setEditTarget(servis);
+    setModalOpen(true);
+  };
+  const openDelete = (servis: Servis) => {
+    setDeleteTarget(servis);
+    setDeleteOpen(true);
+  };
+  const openAdd = () => {
+    setEditTarget(null);
+    setModalOpen(true);
+  };
 
   const formInitial: ServisForm = editTarget
     ? {
@@ -428,27 +529,31 @@ export default function ServisWorkshopPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Servis Workshop</h1>
+            <h1 className="text-xl font-semibold text-foreground">
+              Servis Workshop
+            </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Kelola data servis perangkat di workshop
             </p>
           </div>
+          <Button onClick={openAdd} className="gap-1.5">
+            <RiAddLine className="size-4" />
+            Tambah Servis
+          </Button>
         </div>
 
         {/* Filter & Search */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Search */}
           <div className="relative w-full max-w-sm">
             <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Cari nama, perangkat, atau nomor WA..."
+              placeholder="Cari nama, perangkat, kode tracking..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
             />
           </div>
 
-          {/* Filter Status */}
           <div className="flex items-center gap-2 flex-wrap">
             {["Semua", ...STATUS_LIST].map((s) => (
               <button
@@ -478,6 +583,7 @@ export default function ServisWorkshopPage() {
                 <TableHead>Tanggal Masuk</TableHead>
                 <TableHead>Target Selesai</TableHead>
                 <TableHead>Nomor WhatsApp</TableHead>
+                <TableHead>Kode Tracking</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
@@ -485,16 +591,26 @@ export default function ServisWorkshopPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={10}
+                    className="h-32 text-center text-muted-foreground"
+                  >
                     Memuat data...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={10}
+                    className="h-32 text-center text-muted-foreground"
+                  >
                     <div className="flex flex-col items-center gap-2">
                       <RiToolsLine className="size-8 text-muted-foreground/50" />
-                      <span>{search || filterStatus !== "Semua" ? "Data tidak ditemukan" : "Belum ada data servis"}</span>
+                      <span>
+                        {search || filterStatus !== "Semua"
+                          ? "Data tidak ditemukan"
+                          : "Belum ada data servis"}
+                      </span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -503,23 +619,23 @@ export default function ServisWorkshopPage() {
                   <TableRow key={servis.id}>
                     {/* Nama Pelanggan */}
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm text-foreground">{servis.nama}</span>
-                      </div>
+                      <span className="font-medium text-sm text-foreground">
+                        {servis.nama}
+                      </span>
                     </TableCell>
 
                     {/* Perangkat */}
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-foreground">{servis.jenis_perangkat}</span>
-                      </div>
+                      <span className="text-sm text-foreground">
+                        {servis.jenis_perangkat}
+                      </span>
                     </TableCell>
 
                     {/* Tipe/Merk */}
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-foreground">{servis.tipe_merk}</span>
-                      </div>
+                      <span className="text-sm text-foreground">
+                        {servis.tipe_merk}
+                      </span>
                     </TableCell>
 
                     {/* Keluhan */}
@@ -541,15 +657,41 @@ export default function ServisWorkshopPage() {
 
                     {/* Nomor WhatsApp */}
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">{servis.nomor_whatsapp}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {servis.nomor_whatsapp}
+                      </span>
+                    </TableCell>
+
+                    {/* Kode Tracking */}
+                    <TableCell>
+                      {servis.kode_tracking ? (
+                        <span className="font-mono text-xs font-bold tracking-widest text-foreground">
+                          {servis.kode_tracking}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">
+                          Belum ada
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Status */}
                     <TableCell>
-                      <UpdateStatusServis 
-                        item={servis}  
-                        onUpdated={() => fetchServis()}  
-                      />
+                      <select
+                        value={servis.status}
+                        onChange={(e) =>
+                          handleStatusChange(servis, e.target.value)
+                        }
+                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${
+                          statusStyle[servis.status] ?? ""
+                        }`}
+                      >
+                        {STATUS_LIST.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
                     </TableCell>
 
                     {/* Aksi */}
@@ -557,7 +699,11 @@ export default function ServisWorkshopPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-muted-foreground"
+                            />
                           }
                         >
                           <RiMore2Line />
@@ -569,7 +715,10 @@ export default function ServisWorkshopPage() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="destructive" onClick={() => openDelete(servis)}>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => openDelete(servis)}
+                          >
                             <RiDeleteBinLine className="size-4" />
                             Hapus
                           </DropdownMenuItem>
@@ -592,7 +741,10 @@ export default function ServisWorkshopPage() {
 
       <ServisModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditTarget(null); }}
+        onClose={() => {
+          setModalOpen(false);
+          setEditTarget(null);
+        }}
         onSave={handleSave}
         initial={formInitial}
         loading={modalLoading}
@@ -600,7 +752,10 @@ export default function ServisWorkshopPage() {
 
       <DeleteModal
         open={deleteOpen}
-        onClose={() => { setDeleteOpen(false); setDeleteTarget(null); }}
+        onClose={() => {
+          setDeleteOpen(false);
+          setDeleteTarget(null);
+        }}
         onConfirm={handleDelete}
         nama={deleteTarget?.nama ?? ""}
         loading={deleteLoading}
