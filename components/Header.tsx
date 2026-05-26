@@ -10,7 +10,7 @@ const navItems = [
   { name: "Beranda", href: "#beranda" },
   { name: "Produk", href: "#produk" },
   { name: "Servis", href: "#servis" },
-  { name: "Booking", href: "#booking" },
+  { name: "Tracking Status", href: "#booking" },
   { name: "Tentang Kami", href: "#tentang-kami" },
   { name: "Kontak", href: "#kontak" },
 ];
