@@ -1,29 +1,37 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { RiMenu4Line, RiCloseLine } from "@remixicon/react";
 import { PopupOnsite } from "@/components/PopupOnsite";
 
 const navItems = [
   { name: "Beranda", href: "#beranda" },
+  { name: "Tentang Kami", href: "#tentang-kami" },
   { name: "Produk", href: "#produk" },
   { name: "Servis", href: "#servis" },
-  { name: "Tracking Status", href: "#booking" },
-  { name: "Tentang Kami", href: "#tentang-kami" },
+  { name: "Tracking Status", href: "#tracking" },
   { name: "Kontak", href: "#kontak" },
 ];
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const navbarHeight = window.innerWidth >= 768 ? 107 : 72;
-      const top = el.getBoundingClientRect().top + window.scrollY - navbarHeight;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
+  const handleNav = (id: string) => {
     setMenuOpen(false);
+    if (pathname === "/") {
+      const el = document.getElementById(id);
+      if (el) {
+        const navbarHeight = window.innerWidth >= 768 ? 107 : 72;
+        const top = el.getBoundingClientRect().top + window.scrollY - navbarHeight;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    } else {
+      router.push(`/#${id}`);
+    }
   };
 
   return (
@@ -31,7 +39,7 @@ export function Header() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#01341b] h-[72px] md:h-[107px]">
         <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-full flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <img
               src="/logo.png"
               alt="PT. KALPA KOMPUTER BALI Logo"
@@ -40,14 +48,14 @@ export function Header() {
             <span className="text-white font-bold text-sm md:text-base leading-tight hidden sm:block">
               PT. KALPA KOMPUTER BALI
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-7 xl:gap-8">
             {navItems.map((item) => (
               <button
                 key={item.name}
-                onClick={() => scrollTo(item.href.replace("#", ""))}
+                onClick={() => handleNav(item.href.replace("#", ""))}
                 className="text-white font-semibold text-[15px] hover:text-green-200 transition-colors whitespace-nowrap"
               >
                 {item.name}
@@ -61,7 +69,7 @@ export function Header() {
               onClick={() => setBookingOpen(true)}
               className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap"
             >
-              Booking Sekarang
+              Booking Teknisi
             </button>
           </div>
 
@@ -71,11 +79,7 @@ export function Header() {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >
-            {menuOpen ? (
-              <RiCloseLine className="size-7" />
-            ) : (
-              <RiMenu4Line className="size-7" />
-            )}
+            {menuOpen ? <RiCloseLine className="size-7" /> : <RiMenu4Line className="size-7" />}
           </button>
         </div>
 
@@ -85,7 +89,7 @@ export function Header() {
             {navItems.map((item) => (
               <button
                 key={item.name}
-                onClick={() => scrollTo(item.href.replace("#", ""))}
+                onClick={() => handleNav(item.href.replace("#", ""))}
                 className="text-white font-semibold text-[15px] text-left hover:text-green-200"
               >
                 {item.name}
@@ -95,7 +99,7 @@ export function Header() {
               onClick={() => setBookingOpen(true)}
               className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 w-fit hover:bg-white transition-colors"
             >
-              Booking Sekarang
+              Booking Teknisi
             </button>
           </div>
         )}

@@ -6,7 +6,7 @@ import { PopupDetailProduk } from "@/components/PopupDetailProduk";
 import { RiSearchLine } from "@remixicon/react";
 import { supabase } from "@/lib/supabase";
 
-const heroImgUrl = "https://www.figma.com/api/mcp/asset/f5bc7f72010c3b3c49a42883ca042febbb6b8ecb.png";
+const heroImgUrl = "/hero.png";
 
 interface Produk {
   id: string;
@@ -15,6 +15,7 @@ interface Produk {
   kategori: string;
   deskripsi: string | null;
   gambar_urls: string[] | null;
+  spesifikasi: Record<string, string> | null;
   tampil_di_homepage: boolean;
 }
 
@@ -25,24 +26,22 @@ export default function ProdukPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
+    supabase
       .from("produk")
       .select("*")
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.error("Error fetching products:", error);
-    } else {
-      setProducts(data || []);
-    }
-    setLoading(false);
-  };
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching products:", error);
+        } else {
+          setProducts(data || []);
+        }
+        setLoading(false);
+      });
+  }, []);
 
   const filteredProducts = products.filter((product) =>
-    product.nama.toLowerCase().includes(searchQuery.toLowerCase())
+    product.nama?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -67,7 +66,7 @@ export default function ProdukPage() {
         <div className="max-w-[1440px] mx-auto px-[114px]">
           <div className="flex items-start justify-between mb-[50px]">
             <div>
-              <h2 className="font-bold text-[30px] text-black">Produk Unggulan</h2>
+              <h2 className="font-bold text-[30px] text-black">Semua Produk</h2>
               <p className="font-medium text-[16px] text-[#929292] mt-2">Produk IT unggulan dan bergaransi</p>
             </div>
             <div className="relative border border-[#929292] rounded-[10px] h-[51px] w-[376px] flex items-center px-4">
@@ -106,7 +105,7 @@ export default function ProdukPage() {
                   <p className="font-semibold text-[12px] text-[#929292]">{product.kategori}</p>
                   <button
                     onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
-                    className="rounded-[10px] h-[51px] px-4 font-semibold text-[14px] whitespace-nowrap w-[127px] bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white transition-colors"
+                    className="rounded-[10px] h-[51px] px-4 font-semibold text-[14px] w-[127px] bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white transition-colors"
                   >
                     Detail Produk
                   </button>

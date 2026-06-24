@@ -17,7 +17,7 @@ interface PopupDetailProdukProps {
   onClose: () => void;
 }
 
-const WA_NUMBER = "6285785097067"; 
+const WA_NUMBER = "085785097067"; 
 
 export function PopupDetailProduk({ produk, onClose }: PopupDetailProdukProps) {
   const [activeImg, setActiveImg] = useState(0);

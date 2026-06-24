@@ -6,15 +6,15 @@ import { Hero } from "@/components/Hero";
 import { TentangKami } from "@/components/TentangKami";
 import { ProdukUnggulan } from "@/components/ProdukUnggulan";
 import { Servis } from "@/components/Servis";
-import { TeknisiOnSite } from "@/components/TeknisiOnSite";
+import { TrackingStatus } from "@/components/TrackingStatus";
 import { KontakKami } from "@/components/KontakKami";
 import { Footer } from "@/components/Footer";
 import { PopupServis } from "@/components/PopupServis";
-import { PopupOnsite } from "@/components/PopupOnsite";  // ✅ sudah benar
+import { PopupOnsite } from "@/components/PopupOnsite";
 
 export default function Home() {
   const [popupServisOpen, setPopupServisOpen] = useState(false);
-  const [popupOnsiteOpen, setPopupOnsiteOpen] = useState(false);  // ✅ konsisten
+  const [popupOnsiteOpen, setPopupOnsiteOpen] = useState(false);
 
   return (
     <main className="min-h-screen">
@@ -24,11 +24,11 @@ export default function Home() {
       <ProdukUnggulan />
 
       <Servis
-        onWorkshopOpen={() => setPopupServisOpen(true)}   // ✅ pisah per tombol
+        onWorkshopOpen={() => setPopupServisOpen(true)}
         onOnsiteOpen={() => setPopupOnsiteOpen(true)}
       />
 
-      <TeknisiOnSite onPopupOpen={() => setPopupOnsiteOpen(true)} />
+      <TrackingStatus onPopupOpen={() => setPopupOnsiteOpen(true)} />
 
       <KontakKami />
       <Footer />
