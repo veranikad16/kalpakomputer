@@ -1,8 +1,8 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { PopupDetailProduk } from "@/components/PopupDetailProduk";
 
 interface Produk {
   id: string;
@@ -10,13 +10,15 @@ interface Produk {
   harga: string;
   kategori: string;
   deskripsi: string | null;
-  gambar_url: string | null;
+  gambar_urls: string[] | null;
   tampil_di_homepage: boolean;
+  spesifikasi: Record<string, string> | null; 
 }
 
 export function ProdukUnggulan() {
   const [products, setProducts] = useState<Produk[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduk, setSelectedProduk] = useState<Produk | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -28,7 +30,6 @@ export function ProdukUnggulan() {
       .select("*")
       .eq("tampil_di_homepage", true)
       .limit(6);
-
     if (error) {
       console.error("Error fetching products:", error);
     } else {
@@ -63,14 +64,17 @@ export function ProdukUnggulan() {
             <p className="text-[#929292]">Belum ada produk</p>
           </div>
         ) : (
-          /* Product Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-[34px]">
             {products.map((product) => (
-              <div key={product.id} className="flex flex-col gap-4">
+              <div
+                key={product.id}
+                className="flex flex-col gap-4 cursor-pointer group"
+                onClick={() => setSelectedProduk(product)}
+              >
                 <div className="bg-[#f2f2f2] rounded-[15px] h-[280px] md:h-[350px] overflow-hidden flex items-center justify-center">
-                  {product.gambar_url ? (
+                  {product.gambar_urls?.[0] ? (
                     <img
-                      src={product.gambar_url}
+                      src={product.gambar_urls[0]}
                       alt={product.nama}
                       className="w-full h-full object-cover"
                     />
@@ -82,15 +86,21 @@ export function ProdukUnggulan() {
                 <p className="font-semibold text-[13px] md:text-[14px] text-[#929292]">{product.harga}</p>
                 <p className="font-semibold text-[11px] md:text-[12px] text-[#929292] tracking-wider">{product.kategori}</p>
                 <button
+                  onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
                   className="rounded-[10px] px-4 py-3 font-semibold text-[13px] md:text-[14px] w-fit transition-colors bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white"
                 >
-                  Tanya Produk
+                  Detail Produk
                 </button>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <PopupDetailProduk
+        produk={selectedProduk}
+        onClose={() => setSelectedProduk(null)}
+      />
     </section>
   );
 }

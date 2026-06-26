@@ -2,13 +2,12 @@
 
 import { RiToolsLine, RiTimeLine } from "@remixicon/react";
 
-const servisImgUrl = "https://www.figma.com/api/mcp/asset/e93d6dc0-7d3e-4ec7-9a19-194b582d08c0";
-
 interface ServisProps {
-  onPopupOpen: () => void;
+  onWorkshopOpen: () => void;  // 👈 ganti
+  onOnsiteOpen: () => void;    // 👈 tambah
 }
 
-export function Servis({ onPopupOpen }: ServisProps) {
+export function Servis({ onWorkshopOpen, onOnsiteOpen }: ServisProps) {
   return (
     <section id="servis" className="bg-white py-14 md:py-20">
       <div className="max-w-[1440px] mx-auto px-6 md:px-16">
@@ -42,7 +41,7 @@ export function Servis({ onPopupOpen }: ServisProps) {
                 <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Perbaikan laptop dan PC dengan membawa perangkat ke kantor untuk penanganan lebih lanjut oleh teknisi.</p>
 
                 <button
-                  onClick={onPopupOpen}
+                  onClick={onWorkshopOpen} 
                   className="mt-10 bg-[#f2f2f2] hover:bg-[#e0e0e0] text-black font-semibold text-[13px] md:text-[14px] rounded-[10px] px-5 py-3 transition-colors">
                   Ajukan Servis Workshop
                 </button>
@@ -58,7 +57,7 @@ export function Servis({ onPopupOpen }: ServisProps) {
                 <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed">Perbaikan laptop dan PC langsung di lokasi pelanggan oleh teknisi profesional.</p>
 
                 <button
-                  onClick={onPopupOpen}
+                  onClick={onOnsiteOpen}
                   className="mt-10 bg-[#f2f2f2] hover:bg-[#e0e0e0] text-black font-semibold text-[13px] md:text-[14px] rounded-[10px] px-5 py-3 transition-colors">
                   Ajukan Servis On-Site
                 </button>

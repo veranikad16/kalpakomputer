@@ -1,101 +1,111 @@
 "use client";
-
-import Link from "next/link";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { RiMenu4Line, RiCloseLine } from "@remixicon/react";
+import { PopupOnsite } from "@/components/PopupOnsite";
 
-const PRIMARY = "#01341b";
-const logoUrl = "https://www.figma.com/api/mcp/asset/6931dbe2-393a-41e2-a36d-d417db03b2c0";
 const navItems = [
   { name: "Beranda", href: "#beranda" },
+  { name: "Tentang Kami", href: "#tentang-kami" },
   { name: "Produk", href: "#produk" },
   { name: "Servis", href: "#servis" },
-  { name: "Booking", href: "#booking" },
-  { name: "Tentang Kami", href: "#tentang-kami" },
+  { name: "Tracking Status", href: "#tracking" },
   { name: "Kontak", href: "#kontak" },
 ];
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+  const handleNav = (id: string) => {
     setMenuOpen(false);
+    if (pathname === "/") {
+      const el = document.getElementById(id);
+      if (el) {
+        const navbarHeight = window.innerWidth >= 768 ? 107 : 72;
+        const top = el.getBoundingClientRect().top + window.scrollY - navbarHeight;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    } else {
+      router.push(`/#${id}`);
+    }
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#01341b] h-[72px] md:h-[107px]">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-full flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.png"
-            alt="PT. KALPA KOMPUTER BALI Logo"
-            className="h-10 md:h-14 w-auto object-contain"
-          />
-          <span className="text-white font-bold text-sm md:text-base leading-tight hidden sm:block">
-            PT. KALPA KOMPUTER BALI
-          </span>
-        </div>
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#01341b] h-[72px] md:h-[107px]">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-full flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="PT. KALPA KOMPUTER BALI Logo"
+              className="h-10 md:h-14 w-auto object-contain"
+            />
+            <span className="text-white font-bold text-sm md:text-base leading-tight hidden sm:block">
+              PT. KALPA KOMPUTER BALI
+            </span>
+          </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-7 xl:gap-8">
-          {navItems.map((item) => (
+          {/* Desktop Nav */}
+          <nav className="hidden lg:flex items-center gap-7 xl:gap-8">
+            {navItems.map((item) => (
+              <button
+                key={item.name}
+                onClick={() => handleNav(item.href.replace("#", ""))}
+                className="text-white font-semibold text-[15px] hover:text-green-200 transition-colors whitespace-nowrap"
+              >
+                {item.name}
+              </button>
+            ))}
+          </nav>
+
+          {/* CTA Button */}
+          <div className="hidden lg:block">
             <button
-              key={item.name}
-              onClick={() => scrollTo(item.href.replace("#", ""))}
-              className="text-white font-semibold text-[15px] hover:text-green-200 transition-colors whitespace-nowrap"
+              onClick={() => setBookingOpen(true)}
+              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap"
             >
-              {item.name}
+              Booking Teknisi
             </button>
-          ))}
-        </nav>
+          </div>
 
-        {/* CTA Button */}
-        <div className="hidden lg:block">
+          {/* Mobile menu button */}
           <button
-            onClick={() => scrollTo("booking")}
-            className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap"
+            className="lg:hidden text-white"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
           >
-            Booking Sekarang
+            {menuOpen ? <RiCloseLine className="size-7" /> : <RiMenu4Line className="size-7" />}
           </button>
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          className="lg:hidden text-white"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? (
-            <RiCloseLine className="size-7" />
-          ) : (
-            <RiMenu4Line className="size-7" />
-          )}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="lg:hidden bg-[#01341b] border-t border-green-800 px-6 py-4 flex flex-col gap-4">
-          {navItems.map((item) => (
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div className="lg:hidden bg-[#01341b] border-t border-green-800 px-6 py-4 flex flex-col gap-4">
+            {navItems.map((item) => (
+              <button
+                key={item.name}
+                onClick={() => handleNav(item.href.replace("#", ""))}
+                className="text-white font-semibold text-[15px] text-left hover:text-green-200"
+              >
+                {item.name}
+              </button>
+            ))}
             <button
-              key={item.name}
-              onClick={() => scrollTo(item.href.replace("#", ""))}
-              className="text-white font-semibold text-[15px] text-left hover:text-green-200"
+              onClick={() => setBookingOpen(true)}
+              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 w-fit hover:bg-white transition-colors"
             >
-              {item.name}
+              Booking Teknisi
             </button>
-          ))}
-          <button
-            onClick={() => scrollTo("booking")}
-            className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 w-fit hover:bg-white transition-colors"
-          >
-            Booking Sekarang
-          </button>
-        </div>
-      )}
-    </header>
+          </div>
+        )}
+      </header>
+
+      <PopupOnsite isOpen={bookingOpen} onClose={() => setBookingOpen(false)} />
+    </>
   );
 }

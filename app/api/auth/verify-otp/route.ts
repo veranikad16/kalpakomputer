@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
   const response = NextResponse.json({ success: true })
   response.cookies.set('admin_session', email, {
     httpOnly: true,
-    maxAge: 60 * 60 * 24, // 1 hari
     path: '/'
   })
 

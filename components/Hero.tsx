@@ -1,8 +1,5 @@
 "use client";
-
 import { RiComputerLine, RiToolsLine, RiWifiLine } from "@remixicon/react";
-
-const heroBgUrl = "https://www.figma.com/api/mcp/asset/bd02b340-a3e2-4971-961e-52b369c0a58e";
 
 const services = [
   { icon: RiComputerLine, label: "Penjualan Perangkat IT", sub: "Produk IT Berkualitas" },
@@ -13,14 +10,14 @@ const services = [
 export function Hero() {
   return (
     <section id="beranda" className="relative mt-[72px] md:mt-[107px]">
-      <div className="relative h-[480px] md:h-[620px] lg:h-[680px] w-full overflow-hidden">
-        {/* Hero Background */}
+      <div className="relative w-full overflow-hidden" style={{ height: "calc(100vh - 107px)" }}>
+        {/* Background */}
         <img
           src="/hero.png"
           alt="Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/40" />
 
         {/* Hero Content */}
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 md:px-16 pt-14 md:pt-20 lg:pt-28">
@@ -33,11 +30,9 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Service Highlights Bar */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[1042px]">
-          <div
-            className="bg-[#01341b]/80 backdrop-blur-md rounded-[20px] shadow-[0px_4px_100px_10px_rgba(0,0,0,0.25)] px-8 py-5"
-          >
+        {/* Service Bar — absolute bottom, full inside hero */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center px-4 pb-6">
+          <div className="bg-[#01341b] rounded-[20px] shadow-[0px_4px_40px_rgba(0,0,0,0.3)] px-8 py-5 w-full max-w-[1042px]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-around gap-6 sm:gap-4">
               {services.map((item, i) => (
                 <div key={i} className="flex items-start gap-3">

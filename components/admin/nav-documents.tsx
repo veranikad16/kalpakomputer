@@ -1,22 +1,13 @@
 "use client"
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/admin/ui/dropdown-menu"
+import { usePathname } from "next/navigation"
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/admin/ui/sidebar"
-import { RiMoreLine, RiFolderLine, RiShareLine, RiDeleteBinLine } from "@remixicon/react"
 
 export function NavDocuments({
   items,
@@ -27,61 +18,33 @@ export function NavDocuments({
     icon: React.ReactNode
   }[]
 }) {
-  const { isMobile } = useSidebar()
+  const pathname = usePathname()
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Documents</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton render={<a href={item.url} />}>
-              {item.icon}
-              <span>{item.name}</span>
-            </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuAction
-                    showOnHover
-                    className="aria-expanded:bg-muted"
-                  />
-                }
+      <SidebarGroupLabel className="mb-5">Manajemen Layanan Servis</SidebarGroupLabel>
+      <SidebarMenu className="gap-4">
+        {items.map((item) => {
+          const isActive = pathname === item.url
+
+          return (
+            <SidebarMenuItem key={item.name}>
+              <SidebarMenuButton
+                render={<a href={item.url} />}
+                className={`
+                  transition-colors rounded-lg px-4 py-2
+                  ${isActive
+                    ? "bg-[#1a3d2b] text-white hover:bg-[#1a3d2b] hover:text-white"
+                    : "text-foreground hover:bg-[#1a3d2b] hover:text-white"
+                  }
+                `}
               >
-                <RiMoreLine
-                />
-                <span className="sr-only">More</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-24"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
-              >
-                <DropdownMenuItem>
-                  <RiFolderLine
-                  />
-                  <span>Open</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <RiShareLine
-                  />
-                  <span>Share</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
-                  <RiDeleteBinLine
-                  />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        ))}
-        <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <RiMoreLine className="text-sidebar-foreground/70" />
-            <span>More</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+                {item.icon}
+                <span>{item.name}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

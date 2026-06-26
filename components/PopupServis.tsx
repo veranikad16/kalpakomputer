@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RiCloseLine, RiLoader4Line, RiCheckLine } from "@remixicon/react";
-// import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 interface PopupServisProps {
   isOpen: boolean;
@@ -17,10 +17,13 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
-    jenisPerangkat: "",
-    merkTipe: "",
+    nama: "",
+    nomor_whatsapp: "",
+    jenis_perangkat: "",
+    tipe_merk: "",
     keluhan: "",
-    email: "",
+    tanggal_masuk: "",
+    target_selesai: "",
   });
 
   if (!isOpen) return null;
@@ -30,21 +33,31 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
     setLoading(true);
 
     try {
-      // Simulasi - ganti dengan kode Supabase sebenarnya
-      // const { error } = await supabase.from("servis").insert({
-      //   jenis_perangkat: formData.jenisPerangkat,
-      //   merk_tipe: formData.merkTipe,
-      //   keluhan: formData.keluhan,
-      //   email: formData.email,
-      // });
+      const { error } = await supabase.from("servis_workshop").insert({
+        nama: formData.nama,
+        nomor_whatsapp: formData.nomor_whatsapp,
+        jenis_perangkat: formData.jenis_perangkat,
+        tipe_merk: formData.tipe_merk,
+        keluhan: formData.keluhan,
+        tanggal_masuk: formData.tanggal_masuk,
+        target_selesai: formData.target_selesai,
+      });
 
-      // Simulasi success
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (error) throw error;
+
       setSuccess(true);
 
       setTimeout(() => {
         setSuccess(false);
-        setFormData({ jenisPerangkat: "", merkTipe: "", keluhan: "", email: "" });
+        setFormData({
+          nama: "",
+          nomor_whatsapp: "",
+          jenis_perangkat: "",
+          tipe_merk: "",
+          keluhan: "",
+          tanggal_masuk: "",
+          target_selesai: "",
+        });
         onClose();
       }, 2000);
     } catch (error) {
@@ -82,28 +95,48 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <Label htmlFor="jenisPerangkat">Jenis Perangkat *</Label>
+            <Label htmlFor="nama">Nama Pelanggan *</Label>
             <Input
-              id="jenisPerangkat"
-              placeholder="Laptop / PC / dll"
-              value={formData.jenisPerangkat}
-              onChange={(e) =>
-                setFormData({ ...formData, jenisPerangkat: e.target.value })
-              }
+              id="nama"
+              placeholder="Nama Lengkap"
+              value={formData.nama}
+              onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
               required
               className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="merkTipe">Merk atau Tipe *</Label>
+            <Label htmlFor="nomor_whatsapp">Nomor WhatsApp *</Label>
             <Input
-              id="merkTipe"
+              id="nomor_whatsapp"
+              placeholder="08xxxxxxxxxx"
+              value={formData.nomor_whatsapp}
+              onChange={(e) => setFormData({ ...formData, nomor_whatsapp: e.target.value })}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="jenis_perangkat">Jenis Perangkat *</Label>
+            <Input
+              id="jenis_perangkat"
+              placeholder="Laptop / PC / dll"
+              value={formData.jenis_perangkat}
+              onChange={(e) => setFormData({ ...formData, jenis_perangkat: e.target.value })}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="tipe_merk">Merk atau Tipe *</Label>
+            <Input
+              id="tipe_merk"
               placeholder="Contoh: Asus VivoBook 15"
-              value={formData.merkTipe}
-              onChange={(e) =>
-                setFormData({ ...formData, merkTipe: e.target.value })
-              }
+              value={formData.tipe_merk}
+              onChange={(e) => setFormData({ ...formData, tipe_merk: e.target.value })}
               required
               className="mt-1"
             />
@@ -115,24 +148,31 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
               id="keluhan"
               placeholder="Jelaskan masalah yang dialami..."
               value={formData.keluhan}
-              onChange={(e) =>
-                setFormData({ ...formData, keluhan: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, keluhan: e.target.value })}
               required
               className="mt-1 min-h-[100px]"
             />
           </div>
 
           <div>
-            <Label htmlFor="email">Email yang dapat dihubungi *</Label>
+            <Label htmlFor="tanggal_masuk">Tanggal Masuk *</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="email@contoh.com"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              id="tanggal_masuk"
+              type="date"
+              value={formData.tanggal_masuk}
+              onChange={(e) => setFormData({ ...formData, tanggal_masuk: e.target.value })}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="target_selesai">Target Selesai *</Label>
+            <Input
+              id="target_selesai"
+              type="date"
+              value={formData.target_selesai}
+              onChange={(e) => setFormData({ ...formData, target_selesai: e.target.value })}
               required
               className="mt-1"
             />
@@ -143,12 +183,7 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
           </p>
 
           <div className="flex justify-end gap-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Batal
             </Button>
             <Button
@@ -157,21 +192,15 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
               disabled={loading || success}
             >
               {loading ? (
-                <>
-                  <RiLoader4Line className="w-4 h-4 mr-2 animate-spin" />
-                  Mengirim...
-                </>
+                <><RiLoader4Line className="w-4 h-4 mr-2 animate-spin" />Mengirim...</>
               ) : success ? (
-                <>
-                  <RiCheckLine className="w-4 h-4 mr-2" />
-                  Terkirim!
-                </>
+                <><RiCheckLine className="w-4 h-4 mr-2" />Terkirim!</>
               ) : (
                 "Kirim Pengajuan Servis"
               )}
             </Button>
           </div>
-        </form>
+        </form> 
       </div>
     </div>
   );

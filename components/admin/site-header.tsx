@@ -10,7 +10,12 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 h-4 data-vertical:self-auto"
         />
-        <h1 className="text-base font-medium">Documents</h1>
+        <img
+          src="/logo.png"
+          alt="PT. KALPA KOMPUTER BALI Logo"
+          className="h-8 w-auto object-contain"        
+        />
+        <h1 className="text-base font-medium">PT. KALPA KOMPUTER BALI</h1>
       </div>
     </header>
   )
