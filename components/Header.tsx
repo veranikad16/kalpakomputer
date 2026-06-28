@@ -69,7 +69,7 @@ export function Header() {
               onClick={() => setBookingOpen(true)}
               className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap"
             >
-              Booking Teknisi
+              Hubungi Kami
             </button>
           </div>
 
