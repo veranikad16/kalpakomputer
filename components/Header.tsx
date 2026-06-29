@@ -3,7 +3,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { RiMenu4Line, RiCloseLine } from "@remixicon/react";
-import { PopupOnsite } from "@/components/PopupOnsite";
 
 const navItems = [
   { name: "Beranda", href: "#beranda" },
@@ -16,7 +15,6 @@ const navItems = [
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [bookingOpen, setBookingOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -65,12 +63,14 @@ export function Header() {
 
           {/* CTA Button */}
           <div className="hidden lg:block">
-            <button
-              onClick={() => setBookingOpen(true)}
-              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap"
+            <a
+              href="https://wa.me/6285785097067?text=Halo%2C%20saya%20ingin%20bertanya%20mengenai%20layanan%20Kalpa%20Komputer%20Bali"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 hover:bg-white transition-colors whitespace-nowrap inline-block"
             >
-              Booking Teknisi
-            </button>
+              Hubungi Kami
+            </a>
           </div>
 
           {/* Mobile menu button */}
@@ -95,17 +95,17 @@ export function Header() {
                 {item.name}
               </button>
             ))}
-            <button
-              onClick={() => setBookingOpen(true)}
-              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 w-fit hover:bg-white transition-colors"
+            <a
+              href="https://wa.me/6285785097067?text=Halo%2C%20saya%20ingin%20bertanya%20mengenai%20layanan%20Kalpa%20Komputer%20Bali"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-[#f2f2f2] text-black font-semibold text-sm rounded-[10px] px-5 py-3 w-fit hover:bg-white transition-colors inline-block"
             >
-              Booking Teknisi
-            </button>
+              Hubungi Kami
+            </a>
           </div>
         )}
       </header>
-
-      <PopupOnsite isOpen={bookingOpen} onClose={() => setBookingOpen(false)} />
     </>
   );
 }

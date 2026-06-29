@@ -42,7 +42,6 @@ interface ServisOnsite {
   link_maps: string | null;
   jenis_lokasi: string;
   jenis_perangkat: string;
-  tipe_merk: string;
   jenis_layanan: string;
   keluhan: string;
   tanggal_kunjungan: string;
@@ -64,7 +63,6 @@ interface EditForm {
   link_maps: string;
   jenis_lokasi: string;
   jenis_perangkat: string;
-  tipe_merk: string;
   jenis_layanan: string;
   keluhan: string;
   tanggal_kunjungan: string;
@@ -77,7 +75,6 @@ const emptyEditForm: EditForm = {
   link_maps: "",
   jenis_lokasi: "",
   jenis_perangkat: "",
-  tipe_merk: "",
   jenis_layanan: "",
   keluhan: "",
   tanggal_kunjungan: "",
@@ -91,13 +88,6 @@ const STATUS_LIST = [
   "Berangkat",
   "Diproses",
   "Selesai",
-  "Dibatalkan",
-];
-
-const STATUS_ADMIN_SELECTABLE = [
-  "Pilih Teknisi",
-  "Dikonfirmasi",
-  "Berangkat",
   "Dibatalkan",
 ];
 
@@ -129,22 +119,21 @@ function generateKodeTracking(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
-function isStatusDisabled(
-  option: string,
-  currentStatus: string,
-  teknisiId: string | null
-): boolean {
-  if (option === currentStatus) return false;
-  if (!STATUS_ADMIN_SELECTABLE.includes(option)) return true;
-  if (option === "Pilih Teknisi" && teknisiId !== null) return true;
-  return false;
+// Opsi status yang ditampilkan ke admin berdasarkan kondisi
+function getStatusOptions(teknisiId: string | null): string[] {
+  if (teknisiId) {
+    // Sudah ada teknisi: admin hanya bisa pilih Dikonfirmasi atau Dibatalkan
+    // Berangkat, Diproses, Selesai diupdate oleh teknisi dari dashboard teknisi
+    return ["Dikonfirmasi", "Dibatalkan"];
+  }
+  // Belum ada teknisi: hanya "Pilih Teknisi" dan "Dibatalkan"
+  return ["Pilih Teknisi", "Dibatalkan"];
 }
 
 function buildKonfirmasiMessage(data: {
   kode_tracking: string;
   nama: string;
   jenis_perangkat: string;
-  tipe_merk: string;
   jenis_layanan: string;
   keluhan: string;
   tanggal_kunjungan: string;
@@ -158,7 +147,6 @@ Pengajuan Servis On-Site Anda telah *dikonfirmasi* ✅
 
 Detail layanan:
 - *Jenis Perangkat:* ${data.jenis_perangkat}
-- *Tipe/Merk:* ${data.tipe_merk}
 - *Jenis Layanan:* ${data.jenis_layanan}
 - *Keluhan:* ${data.keluhan}
 - *Tanggal Kunjungan:* ${formatDate(data.tanggal_kunjungan)}
@@ -179,9 +167,6 @@ Jika ada pertanyaan, silakan hubungi kami. Terima kasih 🙏
 
 function buildStatusUpdateMessage(nama: string, status: string) {
   const pesanStatus: Record<string, string> = {
-    Berangkat: `Halo ${nama} 👋\n\nKabar gembira! Teknisi kami sedang *dalam perjalanan* menuju lokasi Anda 🚗💨\n\nMohon bersiap untuk menyambut kedatangan teknisi kami. Jika ada pertanyaan, silakan hubungi kami.\n\nTerima kasih 🙏\n– PT. Kalpa Komputer Bali`,
-    Diproses: `Halo ${nama} 👋\n\nTeknisi kami sedang *mengerjakan* servis perangkat Anda. 🔧\n\nTerima kasih telah menunggu!`,
-    Selesai: `Halo ${nama} 👋\n\nServis perangkat Anda telah *selesai* ✅\n\nTerima kasih telah menggunakan layanan kami 🙏\n– PT. Kalpa Komputer Bali`,
     Dibatalkan: `Halo ${nama} 👋\n\nMohon maaf, ajuan servis Anda telah *dibatalkan* ❌\n\nSilakan hubungi kami untuk informasi lebih lanjut.\n– PT. Kalpa Komputer Bali`,
   };
   return pesanStatus[status] ?? "";
@@ -320,15 +305,6 @@ function EditAjuanModal({
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-merk">Merk / Tipe</Label>
-              <Input
-                id="edit-merk"
-                placeholder="Contoh: HP 1440"
-                value={form.tipe_merk}
-                onChange={(e) => handleChange("tipe_merk", e.target.value)}
-              />
-            </div>
           </div>
 
           {/* Jenis Layanan & Tanggal Kunjungan */}
@@ -417,8 +393,7 @@ function AssignTeknisiModal({
 
   useEffect(() => {
     if (!open || !servis) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelected(servis?.teknisi_id ?? "");
+    setSelected(servis?.teknisi_id ?? ""); // eslint-disable-line react-hooks/set-state-in-effect
     setWarning("");
     setSibukIds([]);
   }, [open, servis]);
@@ -611,8 +586,7 @@ export default function ServisOnsitePage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData(); 
+    fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchData]);
 
   const filtered = servisList.filter((s) => {
@@ -632,7 +606,8 @@ export default function ServisOnsitePage() {
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
 
-    const kodeTracking = generateKodeTracking();
+    const kodeTracking =
+      assignTarget.kode_tracking ?? generateKodeTracking();
 
     const { error } = await supabase
       .from("servis_onsite")
@@ -652,7 +627,6 @@ export default function ServisOnsitePage() {
       kode_tracking: kodeTracking,
       nama: assignTarget.nama,
       jenis_perangkat: assignTarget.jenis_perangkat,
-      tipe_merk: assignTarget.tipe_merk,
       jenis_layanan: assignTarget.jenis_layanan,
       keluhan: assignTarget.keluhan,
       tanggal_kunjungan: assignTarget.tanggal_kunjungan,
@@ -678,7 +652,6 @@ export default function ServisOnsitePage() {
         link_maps: form.link_maps || null,
         jenis_lokasi: form.jenis_lokasi,
         jenis_perangkat: form.jenis_perangkat,
-        tipe_merk: form.tipe_merk,
         jenis_layanan: form.jenis_layanan,
         keluhan: form.keluhan,
         tanggal_kunjungan: form.tanggal_kunjungan,
@@ -712,7 +685,8 @@ export default function ServisOnsitePage() {
       return;
     }
 
-    if (newStatus !== "Dikonfirmasi") {
+    // Kirim WA notifikasi untuk status Dibatalkan
+    if (newStatus === "Dibatalkan") {
       const pesan = buildStatusUpdateMessage(servis.nama, newStatus);
       if (pesan) sendWhatsApp(servis.nomor_whatsapp, pesan);
     }
@@ -744,7 +718,6 @@ export default function ServisOnsitePage() {
         link_maps: editTarget.link_maps ?? "",
         jenis_lokasi: editTarget.jenis_lokasi,
         jenis_perangkat: editTarget.jenis_perangkat,
-        tipe_merk: editTarget.tipe_merk,
         jenis_layanan: editTarget.jenis_layanan,
         keluhan: editTarget.keluhan,
         tanggal_kunjungan: editTarget.tanggal_kunjungan,
@@ -803,7 +776,6 @@ export default function ServisOnsitePage() {
                 <TableHead className="min-w-[200px]">Google Maps</TableHead>
                 <TableHead>Lokasi</TableHead>
                 <TableHead>Perangkat</TableHead>
-                <TableHead>Merk/Tipe</TableHead>
                 <TableHead>Layanan</TableHead>
                 <TableHead className="min-w-[200px]">Keluhan</TableHead>
                 <TableHead>Tgl Kunjungan</TableHead>
@@ -871,11 +843,6 @@ export default function ServisOnsitePage() {
                       <span className="text-sm">{servis.jenis_perangkat}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground line-clamp-1 max-w-[150px]">
-                        {servis.tipe_merk}
-                      </span>
-                    </TableCell>
-                    <TableCell>
                       <span className="text-sm">{servis.jenis_layanan}</span>
                     </TableCell>
                     <TableCell>
@@ -934,16 +901,8 @@ export default function ServisOnsitePage() {
                         }
                         className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${statusStyle[servis.status] ?? ""}`}
                       >
-                        {STATUS_LIST.map((s) => (
-                          <option
-                            key={s}
-                            value={s}
-                            disabled={isStatusDisabled(
-                              s,
-                              servis.status,
-                              servis.teknisi_id
-                            )}
-                          >
+                        {getStatusOptions(servis.teknisi_id).map((s) => (
+                          <option key={s} value={s}>
                             {s}
                           </option>
                         ))}
