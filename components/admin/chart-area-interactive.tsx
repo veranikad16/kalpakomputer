@@ -34,11 +34,11 @@ import {
 const chartConfig = {
   workshop: {
     label: "Workshop",
-    color: "var(--primary)",
+    color: "red",
   },
   onsite: {
     label: "On-Site",
-    color: "var(--color-chart-2, #34d399)",
+    color: "green",
   },
 } satisfies ChartConfig
 
