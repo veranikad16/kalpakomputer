@@ -36,7 +36,6 @@ import { sendWhatsApp } from "@/lib/whatsapp";
 
 interface ServisOnsite {
   id: string;
-  kode_tracking?: string | null;
   nama: string;
   nomor_whatsapp: string;
   alamat: string;
@@ -121,10 +120,6 @@ function formatDate(dateStr: string | null) {
   });
 }
 
-function generateKodeTracking(): string {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
-}
-
 // Pastikan link maps punya protokol yang valid supaya browser tidak
 // menganggapnya relative path (mis. "share.google/xxx" tanpa https://)
 function normalizeMapsLink(url: string | null | undefined): string | null {
@@ -158,7 +153,6 @@ function getStatusOptions(servis: ServisOnsite): string[] {
 }
 
 function buildKonfirmasiMessage(data: {
-  kode_tracking: string;
   nama: string;
   jenis_perangkat: string;
   jenis_layanan: string;
@@ -182,11 +176,6 @@ Detail layanan:
 Teknisi yang akan datang:
 - *Nama:* ${data.teknisi_nama}
 - *WhatsApp:* ${data.teknisi_wa}
-
-🔍 *Kode Tracking Status Anda:*
-*${data.kode_tracking}*
-
-Gunakan kode ini untuk tracking status servis di website kami.
 
 Jika ada pertanyaan, silakan hubungi kami. Terima kasih 🙏
 – PT. Kalpa Komputer Bali`;
@@ -633,15 +622,11 @@ export default function ServisOnsitePage() {
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
 
-    const kodeTracking =
-      assignTarget.kode_tracking ?? generateKodeTracking();
-
     const { error } = await supabase
       .from("servis_onsite")
       .update({
         teknisi_id: teknisiId,
         status: "Dikonfirmasi",
-        kode_tracking: kodeTracking,
       })
       .eq("id", assignTarget.id);
 
@@ -651,7 +636,6 @@ export default function ServisOnsitePage() {
     }
 
     const pesan = buildKonfirmasiMessage({
-      kode_tracking: kodeTracking,
       nama: assignTarget.nama,
       jenis_perangkat: assignTarget.jenis_perangkat,
       jenis_layanan: assignTarget.jenis_layanan,
@@ -806,7 +790,6 @@ export default function ServisOnsitePage() {
                 <TableHead>Layanan</TableHead>
                 <TableHead className="min-w-[200px]">Keluhan</TableHead>
                 <TableHead>Tgl Kunjungan</TableHead>
-                <TableHead>Kode Tracking</TableHead>
                 <TableHead>Teknisi</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
@@ -816,7 +799,7 @@ export default function ServisOnsitePage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={14}
+                    colSpan={13}
                     className="h-32 text-center text-muted-foreground"
                   >
                     Memuat data...
@@ -825,7 +808,7 @@ export default function ServisOnsitePage() {
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={14}
+                    colSpan={13}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -901,19 +884,6 @@ export default function ServisOnsitePage() {
                       </TableCell>
                       <TableCell className="text-sm whitespace-nowrap">
                         {formatDate(servis.tanggal_kunjungan)}
-                      </TableCell>
-
-                      {/* Kode Tracking */}
-                      <TableCell>
-                        {servis.kode_tracking ? (
-                          <span className="font-mono text-xs font-bold tracking-widest text-foreground">
-                            {servis.kode_tracking}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">
-                            Belum ada
-                          </span>
-                        )}
                       </TableCell>
 
                       {/* Teknisi */}

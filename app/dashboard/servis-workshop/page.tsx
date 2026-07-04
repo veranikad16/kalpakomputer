@@ -274,7 +274,7 @@ function AssignTeknisiModal({
               Pilih Teknisi
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Untuk: {servis.nama} — {servis.jenis_perangkat}
+              Untuk: {servis.nama} — {formatDate(servis.tanggal_masuk)}
             </p>
           </div>
           <button
@@ -681,11 +681,16 @@ export default function ServisWorkshopPage() {
     const kodeTracking =
       assignTarget.kode_tracking ?? generateKodeTracking();
 
+    // Kalau ajuan yang di-assign ulang statusnya sudah "Selesai",
+    // status TIDAK direset jadi "Dikonfirmasi" — biarkan tetap "Selesai".
+    const statusBaru =
+      assignTarget.status === "Selesai" ? "Selesai" : "Dikonfirmasi";
+
     const { error } = await supabase
       .from("servis_workshop")
       .update({
         teknisi_id: teknisiId,
-        status: "Dikonfirmasi",
+        status: statusBaru,
         kode_tracking: kodeTracking,
       })
       .eq("id", assignTarget.id);
@@ -695,20 +700,24 @@ export default function ServisWorkshopPage() {
       return;
     }
 
-    // Kirim notifikasi WA ke pelanggan
-    const pesan =
-      buildWhatsAppMessage({
-        nama: assignTarget.nama,
-        jenis_perangkat: assignTarget.jenis_perangkat,
-        tipe_merk: assignTarget.tipe_merk,
-        keluhan: assignTarget.keluhan,
-        tanggal_masuk: formatDate(assignTarget.tanggal_masuk),
-        target_selesai: formatDate(assignTarget.target_selesai),
-      }) +
-      `\n\nTeknisi yang menangani: *${teknisi.nama}*` +
-      `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
+    // Kirim notifikasi WA ke pelanggan hanya jika status memang
+    // baru dikonfirmasi (bukan sekadar ganti teknisi pada servis yang sudah selesai)
+    if (statusBaru === "Dikonfirmasi") {
+      const pesan =
+        buildWhatsAppMessage({
+          nama: assignTarget.nama,
+          jenis_perangkat: assignTarget.jenis_perangkat,
+          tipe_merk: assignTarget.tipe_merk,
+          keluhan: assignTarget.keluhan,
+          tanggal_masuk: formatDate(assignTarget.tanggal_masuk),
+          target_selesai: formatDate(assignTarget.target_selesai),
+        }) +
+        `\n\nTeknisi yang menangani: *${teknisi.nama}*` +
+        `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
 
-    sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
+      sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
+    }
+
     await fetchData();
   };
 
@@ -1070,21 +1079,35 @@ export default function ServisWorkshopPage() {
 
                     {/* Status */}
                     <TableCell>
-                      <select
-                        value={servis.status}
-                        onChange={(e) =>
-                          handleStatusChange(servis, e.target.value)
-                        }
-                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${
-                          statusStyle[servis.status] ?? ""
-                        }`}
-                      >
-                        {getStatusOptions(servis.teknisi_id).map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                      {servis.status === "Diproses" ||
+                      servis.status === "Selesai" ? (
+                        // Status ini diupdate oleh teknisi dari dashboard teknisi,
+                        // jadi di sisi admin cukup ditampilkan (read-only), tidak diedit di sini.
+                        <span
+                          className={`inline-block border rounded px-2 py-1 text-xs font-medium ${
+                            statusStyle[servis.status] ?? ""
+                          }`}
+                          title="Status diupdate oleh teknisi dari dashboard teknisi"
+                        >
+                          {servis.status}
+                        </span>
+                      ) : (
+                        <select
+                          value={servis.status}
+                          onChange={(e) =>
+                            handleStatusChange(servis, e.target.value)
+                          }
+                          className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${
+                            statusStyle[servis.status] ?? ""
+                          }`}
+                        >
+                          {getStatusOptions(servis.teknisi_id).map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </TableCell>
 
                     {/* Aksi */}

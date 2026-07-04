@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { RiCloseLine, RiSearchLine } from "@remixicon/react";
+import { RiCloseLine, RiSearchLine, RiZoomInLine } from "@remixicon/react";
 
 type TrackingData = {
   id: string;
@@ -39,6 +39,65 @@ function formatDate(dateStr: string | null | undefined) {
   });
 }
 
+// Deteksi apakah value tipe_merk adalah URL gambar (hasil upload Supabase Storage)
+// atau sekadar teks biasa (mis. "ASUS VivoBook").
+function isImageUrl(value: string): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  return (
+    /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(trimmed) ||
+    trimmed.includes("/storage/v1/object/")
+  );
+}
+
+// ─── Modal Preview Foto ────────────────────────────────────────────────────────
+
+function ImagePreviewModal({
+  open,
+  onClose,
+  imageUrl,
+}: {
+  open: boolean;
+  onClose: () => void;
+  imageUrl: string | null;
+}) {
+  if (!open || !imageUrl) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-2xl flex flex-col items-center gap-3">
+        <div className="flex items-center justify-between w-full">
+          <p className="text-sm font-medium text-white/90">Preview Foto Merk/Tipe</p>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-1.5"
+          >
+            <RiCloseLine className="size-5" />
+          </button>
+        </div>
+        <div className="w-full max-h-[75vh] overflow-hidden rounded-xl border border-white/10 bg-black flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt="Foto tipe/merk perangkat"
+            className="max-w-full max-h-[75vh] object-contain"
+          />
+        </div>
+        <a
+          href={imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-white/70 hover:text-white underline underline-offset-2"
+        >
+          Buka gambar di tab baru
+        </a>
+      </div>
+    </div>
+  );
+}
+
 interface PopupTrackingProps {
   open: boolean;
   onClose: () => void;
@@ -50,12 +109,18 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState("");
 
+  // Preview foto Merk/Tipe
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setKodeTracking("");
       setData(null);
       setError("");
+      setPreviewOpen(false);
+      setPreviewUrl(null);
     }
   }, [open]);
 
@@ -105,6 +170,11 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
     }
 
     setLoading(false);
+  };
+
+  const openPreview = (url: string) => {
+    setPreviewUrl(url);
+    setPreviewOpen(true);
   };
 
   const STATUS_STEPS = data?.tipe_servis === "workshop" ? STATUS_STEPS_WORKSHOP : STATUS_STEPS_ONSITE;
@@ -176,7 +246,7 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
               {/* Detail */}
               <div className="bg-[#f8f8f8] rounded-xl p-4">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Detail Order</p>
-                <div className="grid grid-cols-2 gap-y-2.5 text-sm">
+                <div className="grid grid-cols-2 gap-y-2.5 text-sm items-center">
                   <span className="text-gray-500">Nama</span>
                   <span className="font-medium text-black text-right">{data.nama}</span>
 
@@ -184,7 +254,28 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
                   <span className="font-medium text-black text-right">{data.jenis_perangkat}</span>
 
                   <span className="text-gray-500">Merk/Tipe</span>
-                  <span className="font-medium text-black text-right">{data.tipe_merk}</span>
+                  {isImageUrl(data.tipe_merk) ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => openPreview(data.tipe_merk)}
+                        className="group relative size-12 rounded-lg overflow-hidden border border-gray-200 hover:border-black/40 transition-colors shrink-0"
+                        title="Klik untuk lihat foto"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={data.tipe_merk}
+                          alt="Foto tipe/merk"
+                          className="size-full object-cover"
+                        />
+                        <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+                          <RiZoomInLine className="size-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="font-medium text-black text-right">{data.tipe_merk}</span>
+                  )}
 
                   {data.tipe_servis === "onsite" && data.jenis_layanan && (
                     <>
@@ -256,6 +347,16 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
           )}
         </div>
       </div>
+
+      {/* Modal Preview Foto Merk/Tipe */}
+      <ImagePreviewModal
+        open={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUrl(null);
+        }}
+        imageUrl={previewUrl}
+      />
     </div>
   );
 }
