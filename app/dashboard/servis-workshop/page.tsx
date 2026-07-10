@@ -15,6 +15,8 @@ import {
   RiMore2Line,
   RiToolsLine,
   RiUserLine,
+  RiImageLine,
+  RiZoomInLine,
 } from "@remixicon/react";
 import {
   DropdownMenu,
@@ -121,6 +123,73 @@ function generateKodeTracking(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
+// Deteksi apakah value tipe_merk adalah URL gambar (hasil upload Supabase Storage)
+// atau sekadar teks biasa (mis. "ASUS VivoBook").
+function isImageUrl(value: string): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  // Cocok untuk url storage supabase atau ekstensi gambar umum
+  return (
+    /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(trimmed) ||
+    trimmed.includes("/storage/v1/object/")
+  );
+}
+
+// ─── Modal Preview Foto ────────────────────────────────────────────────────────
+
+function ImagePreviewModal({
+  open,
+  onClose,
+  imageUrl,
+  title,
+}: {
+  open: boolean;
+  onClose: () => void;
+  imageUrl: string | null;
+  title?: string;
+}) {
+  if (!open || !imageUrl) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-2xl mx-4 flex flex-col items-center gap-3">
+        <div className="flex items-center justify-between w-full">
+          <p className="text-sm font-medium text-white/90">
+            {title ?? "Preview Foto"}
+          </p>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-1.5"
+          >
+            <RiCloseLine className="size-5" />
+          </button>
+        </div>
+        <div className="w-full max-h-[75vh] overflow-hidden rounded-xl border border-white/10 bg-black flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={title ?? "Foto tipe/merk perangkat"}
+            className="max-w-full max-h-[75vh] object-contain"
+          />
+        </div>
+        <a
+          href={imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-white/70 hover:text-white underline underline-offset-2"
+        >
+          Buka gambar di tab baru
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── Modal Assign Teknisi ─────────────────────────────────────────────────────
 
 function AssignTeknisiModal({
@@ -205,7 +274,7 @@ function AssignTeknisiModal({
               Pilih Teknisi
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Untuk: {servis.nama} — {servis.jenis_perangkat}
+              Untuk: {servis.nama} — {formatDate(servis.tanggal_masuk)}
             </p>
           </div>
           <button
@@ -564,6 +633,11 @@ export default function ServisWorkshopPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Servis | null>(null);
 
+  // Preview foto Tipe/Merk
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
@@ -607,11 +681,16 @@ export default function ServisWorkshopPage() {
     const kodeTracking =
       assignTarget.kode_tracking ?? generateKodeTracking();
 
+    // Kalau ajuan yang di-assign ulang statusnya sudah "Selesai",
+    // status TIDAK direset jadi "Dikonfirmasi" — biarkan tetap "Selesai".
+    const statusBaru =
+      assignTarget.status === "Selesai" ? "Selesai" : "Dikonfirmasi";
+
     const { error } = await supabase
       .from("servis_workshop")
       .update({
         teknisi_id: teknisiId,
-        status: "Dikonfirmasi",
+        status: statusBaru,
         kode_tracking: kodeTracking,
       })
       .eq("id", assignTarget.id);
@@ -621,20 +700,24 @@ export default function ServisWorkshopPage() {
       return;
     }
 
-    // Kirim notifikasi WA ke pelanggan
-    const pesan =
-      buildWhatsAppMessage({
-        nama: assignTarget.nama,
-        jenis_perangkat: assignTarget.jenis_perangkat,
-        tipe_merk: assignTarget.tipe_merk,
-        keluhan: assignTarget.keluhan,
-        tanggal_masuk: formatDate(assignTarget.tanggal_masuk),
-        target_selesai: formatDate(assignTarget.target_selesai),
-      }) +
-      `\n\nTeknisi yang menangani: *${teknisi.nama}*` +
-      `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
+    // Kirim notifikasi WA ke pelanggan hanya jika status memang
+    // baru dikonfirmasi (bukan sekadar ganti teknisi pada servis yang sudah selesai)
+    if (statusBaru === "Dikonfirmasi") {
+      const pesan =
+        buildWhatsAppMessage({
+          nama: assignTarget.nama,
+          jenis_perangkat: assignTarget.jenis_perangkat,
+          tipe_merk: assignTarget.tipe_merk,
+          keluhan: assignTarget.keluhan,
+          tanggal_masuk: formatDate(assignTarget.tanggal_masuk),
+          target_selesai: formatDate(assignTarget.target_selesai),
+        }) +
+        `\n\nTeknisi yang menangani: *${teknisi.nama}*` +
+        `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
 
-    sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
+      sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
+    }
+
     await fetchData();
   };
 
@@ -759,6 +842,11 @@ export default function ServisWorkshopPage() {
   const openAdd = () => {
     setEditTarget(null);
     setModalOpen(true);
+  };
+  const openPreview = (url: string, title: string) => {
+    setPreviewUrl(url);
+    setPreviewTitle(title);
+    setPreviewOpen(true);
   };
 
   const getTeknisiNama = (teknisiId: string | null) => {
@@ -891,11 +979,40 @@ export default function ServisWorkshopPage() {
                       </span>
                     </TableCell>
 
-                    {/* Tipe/Merk */}
+                    {/* Tipe/Merk — thumbnail jika berupa foto, teks jika bukan */}
                     <TableCell>
-                      <span className="text-sm text-foreground">
-                        {servis.tipe_merk}
-                      </span>
+                      {isImageUrl(servis.tipe_merk) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openPreview(
+                              servis.tipe_merk,
+                              `${servis.nama} — ${servis.jenis_perangkat}`
+                            )
+                          }
+                          className="group relative size-12 rounded-lg overflow-hidden border border-border hover:border-blue-400 transition-colors shrink-0"
+                          title="Klik untuk lihat foto"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={servis.tipe_merk}
+                            alt="Foto tipe/merk"
+                            className="size-full object-cover"
+                          />
+                          <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
+                            <RiZoomInLine className="size-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </span>
+                        </button>
+                      ) : servis.tipe_merk ? (
+                        <span className="text-sm text-foreground">
+                          {servis.tipe_merk}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+                          <RiImageLine className="size-3.5" />
+                          Belum ada
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Keluhan */}
@@ -962,21 +1079,35 @@ export default function ServisWorkshopPage() {
 
                     {/* Status */}
                     <TableCell>
-                      <select
-                        value={servis.status}
-                        onChange={(e) =>
-                          handleStatusChange(servis, e.target.value)
-                        }
-                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${
-                          statusStyle[servis.status] ?? ""
-                        }`}
-                      >
-                        {getStatusOptions(servis.teknisi_id).map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                      {servis.status === "Diproses" ||
+                      servis.status === "Selesai" ? (
+                        // Status ini diupdate oleh teknisi dari dashboard teknisi,
+                        // jadi di sisi admin cukup ditampilkan (read-only), tidak diedit di sini.
+                        <span
+                          className={`inline-block border rounded px-2 py-1 text-xs font-medium ${
+                            statusStyle[servis.status] ?? ""
+                          }`}
+                          title="Status diupdate oleh teknisi dari dashboard teknisi"
+                        >
+                          {servis.status}
+                        </span>
+                      ) : (
+                        <select
+                          value={servis.status}
+                          onChange={(e) =>
+                            handleStatusChange(servis, e.target.value)
+                          }
+                          className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${
+                            statusStyle[servis.status] ?? ""
+                          }`}
+                        >
+                          {getStatusOptions(servis.teknisi_id).map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </TableCell>
 
                     {/* Aksi */}
@@ -1023,6 +1154,17 @@ export default function ServisWorkshopPage() {
           </p>
         )}
       </div>
+
+      {/* Modal Preview Foto Tipe/Merk */}
+      <ImagePreviewModal
+        open={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUrl(null);
+        }}
+        imageUrl={previewUrl}
+        title={previewTitle}
+      />
 
       {/* Modal Assign Teknisi */}
       <AssignTeknisiModal

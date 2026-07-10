@@ -1,6 +1,6 @@
 "use client";
 
-import { RiToolsLine, RiTimeLine } from "@remixicon/react";
+import { RiToolsLine, RiMapPinLine } from "@remixicon/react";
 
 interface ServisProps {
   onWorkshopOpen: () => void;  // 👈 ganti
@@ -50,7 +50,7 @@ export function Servis({ onWorkshopOpen, onOnsiteOpen }: ServisProps) {
                 <div className="relative size-[50px]">
                   <div className="absolute inset-0 bg-[#f2f2f2] rounded-full" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <RiTimeLine className="size-5 text-black" />
+                    <RiMapPinLine className="size-5 text-black" />
                   </div>
                 </div>
                 <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">Servis On-Site</p>

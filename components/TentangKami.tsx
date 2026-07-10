@@ -6,16 +6,16 @@ const tentangKamiImgUrl = "https://www.figma.com/api/mcp/asset/324c83f8-ad2e-4ec
 
 const features = [
   {
-    title: "Memberikan Layanan Profesional",
-    desc: "Menjadi penyedia layanan teknologi terpercaya yang menghadirkan solusi IT berkualitas, cepat, dan profesional bagi masyarakat dan dunia usaha",
+    title: "Servis Workshop",
+    desc: "Bawa perangkat Anda langsung ke workshop kami untuk mendapatkan pemeriksaan, diagnosa, dan perbaikan yang ditangani oleh teknisi berpengalaman dengan proses yang aman dan terpercaya.",
   },
   {
-    title: "Mengutamakan Kepuasan Pelanggan",
-    desc: "Menghadirkan pelayanan yang responsif, komunikatif, dan transparan demi membangun kepercayaan jangka panjang",
+    title: "Servis On-Site",
+    desc: "Tidak bisa datang ke toko? Tim teknisi kami siap mengunjungi lokasi Anda untuk melakukan instalasi, perawatan, maupun perbaikan perangkat secara langsung.",
   },
   {
-    title: "Mengikuti Perkembangan Teknologi",
-    desc: "Terus meningkatkan kemampuan teknisi dan layanan agar selalu relevan dengan perkembangan teknologi terkini",
+    title: "Tracking Status Servis",
+    desc: "Cek perkembangan status servis workshop kapan saja melalui sistem tracking online, mulai dari proses pengecekan hingga perangkat siap diambil.",
   },
 ];
 

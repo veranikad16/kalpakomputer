@@ -15,23 +15,31 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Store,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type JenisJadwal = "workshop" | "onsite"
+
+// Bentuk gabungan (unified) dari servis_workshop & servis_onsite,
+// supaya dashboard teknisi bisa menampilkan keduanya dalam satu list.
 type Jadwal = {
   id: string
+  jenis: JenisJadwal
   nama: string
   nomor_whatsapp: string
-  alamat: string
+  alamat: string | null
   link_maps: string | null
-  jenis_lokasi: string
+  jenis_lokasi: string | null
   jenis_perangkat: string
   tipe_merk: string
-  jenis_layanan: string
+  jenis_layanan: string | null
   keluhan: string
-  tanggal_kunjungan: string
+  tanggal: string // tanggal_kunjungan (onsite) atau tanggal_masuk (workshop)
+  target_selesai: string | null // hanya untuk workshop
   status: string
+  kode_tracking: string | null
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -49,6 +57,16 @@ function formatTanggal(dateStr: string) {
 function isHariIni(dateStr: string) {
   const today = new Date().toISOString().split("T")[0]
   return dateStr === today
+}
+
+function isImageUrl(value: string) {
+  if (!value) return false
+  const trimmed = value.trim()
+  if (!/^https?:\/\//i.test(trimmed)) return false
+  return (
+    /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(trimmed) ||
+    trimmed.includes("/storage/v1/object/")
+  )
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -74,8 +92,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   },
 }
 
-// Status yang bisa dipilih teknisi
-const STATUS_ACTIONS = ["Diproses", "Selesai"]
+const JENIS_BADGE: Record<JenisJadwal, string> = {
+  workshop: "bg-purple-100 text-purple-700 border-purple-200",
+  onsite: "bg-cyan-100 text-cyan-700 border-cyan-200",
+}
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
@@ -86,14 +106,15 @@ function DetailModal({
 }: {
   jadwal: Jadwal
   onClose: () => void
-  onUpdateStatus: (id: string, status: string) => Promise<void>
+  onUpdateStatus: (jadwal: Jadwal, status: string) => Promise<void>
 }) {
   const [loading, setLoading] = useState(false)
   const cfg = STATUS_CONFIG[jadwal.status]
+  const isOnsite = jadwal.jenis === "onsite"
 
   const handleUpdate = async (status: string) => {
     setLoading(true)
-    await onUpdateStatus(jadwal.id, status)
+    await onUpdateStatus(jadwal, status)
     setLoading(false)
     onClose()
   }
@@ -108,7 +129,7 @@ function DetailModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
             <h2 className="font-semibold text-foreground">{jadwal.nama}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{formatTanggal(jadwal.tanggal_kunjungan)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{formatTanggal(jadwal.tanggal)}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
             <X className="h-5 w-5" />
@@ -117,13 +138,17 @@ function DetailModal({
 
         {/* Body */}
         <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Status */}
-          <div className="flex items-center gap-2">
+          {/* Status & jenis */}
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${cfg?.color ?? "bg-gray-100 text-gray-600"}`}>
               {cfg?.icon}
               {jadwal.status}
             </span>
-            {isHariIni(jadwal.tanggal_kunjungan) && (
+            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${JENIS_BADGE[jadwal.jenis]}`}>
+              {jadwal.jenis === "onsite" ? <MapPin className="h-3.5 w-3.5" /> : <Store className="h-3.5 w-3.5" />}
+              {jadwal.jenis === "onsite" ? "Onsite" : "Workshop"}
+            </span>
+            {isHariIni(jadwal.tanggal) && (
               <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2.5 py-1 rounded-full font-medium">
                 Hari Ini
               </span>
@@ -150,29 +175,56 @@ function DetailModal({
                   Hubungi
                 </a>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Lokasi</span>
-                <span className="font-medium">{jadwal.jenis_lokasi}</span>
-              </div>
+              {isOnsite && jadwal.jenis_lokasi && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Lokasi</span>
+                  <span className="font-medium">{jadwal.jenis_lokasi}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Alamat */}
-          <div className="bg-muted/40 rounded-xl p-4 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Alamat</p>
-            <p className="text-sm">{jadwal.alamat}</p>
-            {jadwal.link_maps && (
-              <a
-                href={jadwal.link_maps}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 mt-2 text-sm text-blue-600 font-medium"
-              >
-                <MapPin className="h-4 w-4" />
-                Buka di Google Maps
-              </a>
-            )}
-          </div>
+          {/* Alamat — hanya untuk onsite */}
+          {isOnsite ? (
+            <div className="bg-muted/40 rounded-xl p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Alamat</p>
+              <p className="text-sm">{jadwal.alamat}</p>
+              {jadwal.link_maps && (
+                <a
+                  href={jadwal.link_maps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 mt-2 text-sm text-blue-600 font-medium"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Buka di Google Maps
+                </a>
+              )}
+            </div>
+          ) : (
+            /* Info workshop — tanggal masuk, target selesai, kode tracking */
+            <div className="bg-muted/40 rounded-xl p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Info Workshop</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tanggal Masuk</span>
+                  <span className="font-medium">{formatTanggal(jadwal.tanggal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Target Selesai</span>
+                  <span className="font-medium">
+                    {jadwal.target_selesai ? formatTanggal(jadwal.target_selesai) : "-"}
+                  </span>
+                </div>
+                {jadwal.kode_tracking && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kode Tracking</span>
+                    <span className="font-mono font-bold tracking-widest">{jadwal.kode_tracking}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Detail Servis */}
           <div className="bg-muted/40 rounded-xl p-4 space-y-2">
@@ -182,14 +234,32 @@ function DetailModal({
                 <span className="text-muted-foreground">Perangkat</span>
                 <span className="font-medium">{jadwal.jenis_perangkat}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Merk/Tipe</span>
-                <span className="font-medium">{jadwal.tipe_merk}</span>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Merk/Tipe</span>
+                {isImageUrl(jadwal.tipe_merk) ? (
+                  <a
+                    href={jadwal.tipe_merk}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={jadwal.tipe_merk}
+                      alt="Foto tipe/merk"
+                      className="size-10 rounded-lg object-cover border border-border"
+                    />
+                  </a>
+                ) : (
+                  <span className="font-medium text-right">{jadwal.tipe_merk}</span>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Layanan</span>
-                <span className="font-medium">{jadwal.jenis_layanan}</span>
-              </div>
+              {jadwal.jenis_layanan && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Layanan</span>
+                  <span className="font-medium">{jadwal.jenis_layanan}</span>
+                </div>
+              )}
               <div className="pt-1 border-t border-border">
                 <p className="text-muted-foreground mb-1">Keluhan</p>
                 <p className="font-medium">{jadwal.keluhan}</p>
@@ -203,26 +273,26 @@ function DetailModal({
           <div className="px-5 py-4 border-t border-border bg-muted/20 space-y-2">
             <p className="text-xs text-muted-foreground mb-2">Update status:</p>
             {jadwal.status === "Diproses" ? (
-            <Button
-              onClick={() => handleUpdate("Selesai")}
-              disabled={loading}
-              variant="default"
-              className="w-full"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-1.5" />
-              Selesai
-            </Button>
-          ) : (
-            <Button
-              onClick={() => handleUpdate("Diproses")}
-              disabled={loading}
-              variant="default"
-              className="w-full"
-            >
-              <Wrench className="h-4 w-4 mr-1.5" />
-              Diproses
-            </Button>
-          )}
+              <Button
+                onClick={() => handleUpdate("Selesai")}
+                disabled={loading}
+                variant="default"
+                className="w-full"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                Selesai
+              </Button>
+            ) : (
+              <Button
+                onClick={() => handleUpdate("Diproses")}
+                disabled={loading}
+                variant="default"
+                className="w-full"
+              >
+                <Wrench className="h-4 w-4 mr-1.5" />
+                Diproses
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -254,15 +324,67 @@ export default function TeknisiPage() {
     setTeknisiNama(nama ?? "")
   }, [router])
 
-  // Fetch jadwal
+  // Fetch jadwal — gabungan dari servis_workshop & servis_onsite
   const fetchJadwal = async (id: string) => {
     setLoading(true)
-    const { data } = await supabase
-      .from("servis_onsite")
-      .select("*")
-      .eq("teknisi_id", id)
-      .order("tanggal_kunjungan", { ascending: true })
-    setJadwalList(data ?? [])
+
+    const [workshopRes, onsiteRes] = await Promise.all([
+      supabase
+        .from("servis_workshop")
+        .select("*")
+        .eq("teknisi_id", id)
+        .order("tanggal_masuk", { ascending: true }),
+      supabase
+        .from("servis_onsite")
+        .select("*")
+        .eq("teknisi_id", id)
+        .order("tanggal_kunjungan", { ascending: true }),
+    ])
+
+    if (workshopRes.error) console.error("Gagal ambil servis_workshop:", workshopRes.error)
+    if (onsiteRes.error) console.error("Gagal ambil servis_onsite:", onsiteRes.error)
+
+    const workshopJadwal: Jadwal[] = (workshopRes.data ?? []).map((s) => ({
+      id: s.id,
+      jenis: "workshop",
+      nama: s.nama,
+      nomor_whatsapp: s.nomor_whatsapp,
+      alamat: null,
+      link_maps: null,
+      jenis_lokasi: null,
+      jenis_perangkat: s.jenis_perangkat,
+      tipe_merk: s.tipe_merk,
+      jenis_layanan: null,
+      keluhan: s.keluhan,
+      tanggal: s.tanggal_masuk,
+      target_selesai: s.target_selesai,
+      status: s.status,
+      kode_tracking: s.kode_tracking,
+    }))
+
+    const onsiteJadwal: Jadwal[] = (onsiteRes.data ?? []).map((s) => ({
+      id: s.id,
+      jenis: "onsite",
+      nama: s.nama,
+      nomor_whatsapp: s.nomor_whatsapp,
+      alamat: s.alamat,
+      link_maps: s.link_maps ?? null,
+      jenis_lokasi: s.jenis_lokasi,
+      jenis_perangkat: s.jenis_perangkat,
+      tipe_merk: s.tipe_merk,
+      jenis_layanan: s.jenis_layanan,
+      keluhan: s.keluhan,
+      tanggal: s.tanggal_kunjungan,
+      target_selesai: null,
+      status: s.status,
+      kode_tracking: s.kode_tracking ?? null,
+    }))
+
+    const gabungan = [...workshopJadwal, ...onsiteJadwal].sort((a, b) =>
+      a.tanggal.localeCompare(b.tanggal)
+    )
+
+    setJadwalList(gabungan)
     setLoading(false)
   }
 
@@ -271,9 +393,14 @@ export default function TeknisiPage() {
     if (teknisiId) fetchJadwal(teknisiId)
   }, [teknisiId])
 
-  // Update status
-  const handleUpdateStatus = async (jadwalId: string, status: string) => {
-    await supabase.from("servis_onsite").update({ status }).eq("id", jadwalId)
+  // Update status — target tabel ditentukan dari jadwal.jenis
+  const handleUpdateStatus = async (jadwal: Jadwal, status: string) => {
+    const table = jadwal.jenis === "workshop" ? "servis_workshop" : "servis_onsite"
+    const { error } = await supabase.from(table).update({ status }).eq("id", jadwal.id)
+    if (error) {
+      console.error(`Gagal update status ${table}:`, error)
+      return
+    }
     if (teknisiId) await fetchJadwal(teknisiId)
   }
 
@@ -293,7 +420,7 @@ export default function TeknisiPage() {
   // Kelompokkan per tanggal
   const grouped: Record<string, Jadwal[]> = {}
   filtered.forEach((j) => {
-    const key = j.tanggal_kunjungan
+    const key = j.tanggal
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(j)
   })
@@ -367,16 +494,24 @@ export default function TeknisiPage() {
                   const cfg = STATUS_CONFIG[j.status]
                   return (
                     <button
-                      key={j.id}
+                      key={`${j.jenis}-${j.id}`}
                       onClick={() => setSelectedJadwal(j)}
                       className="w-full bg-background border border-border rounded-xl p-4 text-left hover:bg-muted/40 transition-colors active:scale-[0.99]"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${JENIS_BADGE[j.jenis]}`}>
+                              {j.jenis === "onsite" ? <MapPin className="h-2.5 w-2.5" /> : <Store className="h-2.5 w-2.5" />}
+                              {j.jenis === "onsite" ? "Onsite" : "Workshop"}
+                            </span>
+                          </div>
                           <p className="font-medium text-sm text-foreground truncate">{j.nama}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{j.alamat}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {j.jenis === "onsite" ? j.alamat : "Servis di workshop"}
+                          </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {j.jenis_perangkat} · {j.tipe_merk}
+                            {j.jenis_perangkat} · {isImageUrl(j.tipe_merk) ? "Foto tipe/merk" : j.tipe_merk}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -401,10 +536,7 @@ export default function TeknisiPage() {
         <DetailModal
           jadwal={selectedJadwal}
           onClose={() => setSelectedJadwal(null)}
-          onUpdateStatus={async (id, status) => {
-            await handleUpdateStatus(id, status)
-            setSelectedJadwal(null)
-          }}
+          onUpdateStatus={handleUpdateStatus}
         />
       )}
     </div>

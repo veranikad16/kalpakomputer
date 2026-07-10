@@ -13,6 +13,7 @@ import {
   RiDeleteBinLine,
   RiUserLine,
   RiEditLine,
+  RiExternalLinkLine,
 } from "@remixicon/react";
 import {
   DropdownMenu,
@@ -35,7 +36,6 @@ import { sendWhatsApp } from "@/lib/whatsapp";
 
 interface ServisOnsite {
   id: string;
-  kode_tracking?: string | null;
   nama: string;
   nomor_whatsapp: string;
   alamat: string;
@@ -104,6 +104,11 @@ const JENIS_LOKASI_LIST = ["Rumah", "Kantor", "Toko", "Villa", "Sekolah", "Lainn
 const JENIS_PERANGKAT_LIST = ["Laptop", "PC / Komputer", "Printer", "Server", "Lainnya"];
 const JENIS_LAYANAN_LIST = ["Perbaikan", "Instalasi", "Maintenance", "Lainnya"];
 
+// Status-status yang dikelola dari dashboard teknisi, bukan dari admin.
+// Kalau status ajuan salah satu dari ini, dropdown di admin akan
+// menampilkan status ini apa adanya dan di-disable (read-only).
+const TEKNISI_MANAGED_STATUSES = ["Berangkat", "Diproses", "Selesai"];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | null) {
@@ -115,15 +120,32 @@ function formatDate(dateStr: string | null) {
   });
 }
 
-function generateKodeTracking(): string {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
+// Pastikan link maps punya protokol yang valid supaya browser tidak
+// menganggapnya relative path (mis. "share.google/xxx" tanpa https://)
+function normalizeMapsLink(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }
 
-// Opsi status yang ditampilkan ke admin berdasarkan kondisi
-function getStatusOptions(teknisiId: string | null): string[] {
-  if (teknisiId) {
+// Opsi status yang ditampilkan ke admin berdasarkan kondisi.
+//
+// PENTING: kalau status saat ini adalah salah satu status yang dikelola
+// teknisi (Berangkat/Diproses/Selesai), status tsb HARUS selalu jadi
+// bagian dari daftar opsi. Kalau tidak, <select> React akan di-set
+// value ke status yang tidak ada di antara <option>, sehingga browser
+// jatuh ke opsi pertama di list (mis. "Dikonfirmasi") — itulah sebabnya
+// dashboard admin sebelumnya menampilkan status yang salah dan dropdown
+// terasa "macet"/tidak bisa diklik.
+function getStatusOptions(servis: ServisOnsite): string[] {
+  if (TEKNISI_MANAGED_STATUSES.includes(servis.status)) {
+    // Read-only di sisi admin: hanya tampilkan status saat ini.
+    return [servis.status];
+  }
+  if (servis.teknisi_id) {
     // Sudah ada teknisi: admin hanya bisa pilih Dikonfirmasi atau Dibatalkan
-    // Berangkat, Diproses, Selesai diupdate oleh teknisi dari dashboard teknisi
     return ["Dikonfirmasi", "Dibatalkan"];
   }
   // Belum ada teknisi: hanya "Pilih Teknisi" dan "Dibatalkan"
@@ -131,7 +153,6 @@ function getStatusOptions(teknisiId: string | null): string[] {
 }
 
 function buildKonfirmasiMessage(data: {
-  kode_tracking: string;
   nama: string;
   jenis_perangkat: string;
   jenis_layanan: string;
@@ -155,11 +176,6 @@ Detail layanan:
 Teknisi yang akan datang:
 - *Nama:* ${data.teknisi_nama}
 - *WhatsApp:* ${data.teknisi_wa}
-
-🔍 *Kode Tracking Status Anda:*
-*${data.kode_tracking}*
-
-Gunakan kode ini untuk tracking status servis di website kami.
 
 Jika ada pertanyaan, silakan hubungi kami. Terima kasih 🙏
 – PT. Kalpa Komputer Bali`;
@@ -606,15 +622,11 @@ export default function ServisOnsitePage() {
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
 
-    const kodeTracking =
-      assignTarget.kode_tracking ?? generateKodeTracking();
-
     const { error } = await supabase
       .from("servis_onsite")
       .update({
         teknisi_id: teknisiId,
         status: "Dikonfirmasi",
-        kode_tracking: kodeTracking,
       })
       .eq("id", assignTarget.id);
 
@@ -624,7 +636,6 @@ export default function ServisOnsitePage() {
     }
 
     const pesan = buildKonfirmasiMessage({
-      kode_tracking: kodeTracking,
       nama: assignTarget.nama,
       jenis_perangkat: assignTarget.jenis_perangkat,
       jenis_layanan: assignTarget.jenis_layanan,
@@ -773,13 +784,12 @@ export default function ServisOnsitePage() {
                 <TableHead className="min-w-[200px]">Pelanggan</TableHead>
                 <TableHead>WhatsApp</TableHead>
                 <TableHead className="min-w-[200px]">Alamat</TableHead>
-                <TableHead className="min-w-[200px]">Google Maps</TableHead>
+                <TableHead className="min-w-[140px]">Google Maps</TableHead>
                 <TableHead>Lokasi</TableHead>
                 <TableHead>Perangkat</TableHead>
                 <TableHead>Layanan</TableHead>
                 <TableHead className="min-w-[200px]">Keluhan</TableHead>
                 <TableHead>Tgl Kunjungan</TableHead>
-                <TableHead>Kode Tracking</TableHead>
                 <TableHead>Teknisi</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
@@ -789,7 +799,7 @@ export default function ServisOnsitePage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={14}
+                    colSpan={13}
                     className="h-32 text-center text-muted-foreground"
                   >
                     Memuat data...
@@ -798,7 +808,7 @@ export default function ServisOnsitePage() {
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={14}
+                    colSpan={13}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -812,143 +822,163 @@ export default function ServisOnsitePage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((servis) => (
-                  <TableRow key={servis.id}>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground whitespace-normal break-words">
-                        {servis.nama}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {servis.nomor_whatsapp}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground whitespace-normal break-words">
-                        {servis.alamat}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground whitespace-normal break-words">
-                        {servis.link_maps}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {servis.jenis_lokasi}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{servis.jenis_perangkat}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{servis.jenis_layanan}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground whitespace-normal break-words">
-                        {servis.keluhan}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {formatDate(servis.tanggal_kunjungan)}
-                    </TableCell>
-
-                    {/* Kode Tracking */}
-                    <TableCell>
-                      {servis.kode_tracking ? (
-                        <span className="font-mono text-xs font-bold tracking-widest text-foreground">
-                          {servis.kode_tracking}
+                filtered.map((servis) => {
+                  const mapsHref = normalizeMapsLink(servis.link_maps);
+                  const isReadOnlyStatus = TEKNISI_MANAGED_STATUSES.includes(
+                    servis.status
+                  );
+                  return (
+                    <TableRow key={servis.id}>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground whitespace-normal break-words">
+                          {servis.nama}
                         </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic">
-                          Belum ada
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {servis.nomor_whatsapp}
                         </span>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground whitespace-normal break-words">
+                          {servis.alamat}
+                        </span>
+                      </TableCell>
 
-                    {/* Teknisi */}
-                    <TableCell>
-                      {getTeknisiNama(servis.teknisi_id) ? (
-                        <button
-                          onClick={() => {
-                            setAssignTarget(servis);
-                            setAssignOpen(true);
-                          }}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                        >
-                          {getTeknisiNama(servis.teknisi_id)}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setAssignTarget(servis);
-                            setAssignOpen(true);
-                          }}
-                          className="text-xs bg-yellow-50 text-yellow-600 border border-yellow-200 px-2 py-1 rounded-lg hover:bg-yellow-100 transition-colors"
-                        >
-                          + Pilih Teknisi
-                        </button>
-                      )}
-                    </TableCell>
+                      {/* Google Maps — sekarang bisa diklik */}
+                      <TableCell>
+                        {mapsHref ? (
+                          <a
+                            href={mapsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                            title={mapsHref}
+                          >
+                            <RiMapPinLine className="size-3.5 shrink-0" />
+                            Buka Maps
+                            <RiExternalLinkLine className="size-3 shrink-0" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">
+                            -
+                          </span>
+                        )}
+                      </TableCell>
 
-                    {/* Status */}
-                    <TableCell>
-                      <select
-                        value={servis.status}
-                        onChange={(e) =>
-                          handleUpdateStatus(servis, e.target.value)
-                        }
-                        className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors cursor-pointer ${statusStyle[servis.status] ?? ""}`}
-                      >
-                        {getStatusOptions(servis.teknisi_id).map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {servis.jenis_lokasi}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{servis.jenis_perangkat}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{servis.jenis_layanan}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground whitespace-normal break-words">
+                          {servis.keluhan}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {formatDate(servis.tanggal_kunjungan)}
+                      </TableCell>
 
-                    {/* Aksi */}
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-muted-foreground"
-                            />
+                      {/* Teknisi */}
+                      <TableCell>
+                        {getTeknisiNama(servis.teknisi_id) ? (
+                          <button
+                            onClick={() => {
+                              setAssignTarget(servis);
+                              setAssignOpen(true);
+                            }}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                          >
+                            {getTeknisiNama(servis.teknisi_id)}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setAssignTarget(servis);
+                              setAssignOpen(true);
+                            }}
+                            className="text-xs bg-yellow-50 text-yellow-600 border border-yellow-200 px-2 py-1 rounded-lg hover:bg-yellow-100 transition-colors"
+                          >
+                            + Pilih Teknisi
+                          </button>
+                        )}
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell>
+                        <select
+                          value={servis.status}
+                          onChange={(e) =>
+                            handleUpdateStatus(servis, e.target.value)
                           }
+                          disabled={isReadOnlyStatus}
+                          title={
+                            isReadOnlyStatus
+                              ? "Status ini diupdate dari dashboard teknisi"
+                              : undefined
+                          }
+                          className={`border rounded px-2 py-1 text-xs font-medium focus:outline-none transition-colors ${
+                            isReadOnlyStatus
+                              ? "cursor-not-allowed opacity-90"
+                              : "cursor-pointer"
+                          } ${statusStyle[servis.status] ?? ""}`}
                         >
-                          <RiMore2Line />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditTarget(servis);
-                              setEditOpen(true);
-                            }}
+                          {getStatusOptions(servis).map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </TableCell>
+
+                      {/* Aksi */}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground"
+                              />
+                            }
                           >
-                            <RiEditLine className="size-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => {
-                              setDeleteTarget(servis);
-                              setDeleteOpen(true);
-                            }}
-                          >
-                            <RiDeleteBinLine className="size-4" />
-                            Hapus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                            <RiMore2Line />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditTarget(servis);
+                                setEditOpen(true);
+                              }}
+                            >
+                              <RiEditLine className="size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => {
+                                setDeleteTarget(servis);
+                                setDeleteOpen(true);
+                              }}
+                            >
+                              <RiDeleteBinLine className="size-4" />
+                              Hapus
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
