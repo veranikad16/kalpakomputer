@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { RiMapPinLine, RiCalendarLine } from "@remixicon/react";
+import { RiTimeLine, RiCheckLine } from "@remixicon/react";
 import { PopupTracking } from "@/components/PopupTracking";
 
 interface TrackingStatusProps {
@@ -18,7 +18,7 @@ export function TrackingStatus({ onPopupOpen }: TrackingStatusProps) {
           {/* Content */}
           <div className="flex-1 order-2 lg:order-1">
             <h2 className="font-black text-[28px] md:text-[36px] text-black mb-6">
-              Tracking Status Servis On-Site
+              Tracking Status Servis Workshop
             </h2>
 
             <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed max-w-[598px]">
@@ -32,7 +32,7 @@ export function TrackingStatus({ onPopupOpen }: TrackingStatusProps) {
                 <div className="relative size-[50px]">
                   <div className="absolute inset-0 bg-[#f2f2f2] rounded-full" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <RiMapPinLine className="size-6 text-black" />
+                    <RiTimeLine className="size-6 text-black" />
                   </div>
                 </div>
                 <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">
@@ -47,7 +47,7 @@ export function TrackingStatus({ onPopupOpen }: TrackingStatusProps) {
                 <div className="relative size-[50px]">
                   <div className="absolute inset-0 bg-[#f2f2f2] rounded-full" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <RiCalendarLine className="size-6 text-black" />
+                    <RiCheckLine className="size-6 text-black" />
                   </div>
                 </div>
                 <p className="font-semibold text-[15px] md:text-[16px] text-black mt-2">

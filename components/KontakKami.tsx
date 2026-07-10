@@ -1,30 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { RiWhatsappFill, RiMailFill, RiMapPinLine } from "@remixicon/react";
 
 export function KontakKami() {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
-
-  const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
-
-  const waNumber = "628174745137"; // nomor WA tanpa + dan spasi
-    const text = [
-      `Halo, saya ${form.firstName} ${form.lastName}.`,
-      `Email: ${form.email}`,
-      `Telepon: ${form.phone}`,
-      `Subjek: ${form.subject}`,
-      ``,
-      `Pesan:`,
-      form.message,
-    ].join("\n");
-
-    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, "_blank");
-
-    setForm({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
-  };
 
   const contactInfo = [
     {
@@ -72,10 +50,10 @@ export function KontakKami() {
           </div>
         </div>
 
-        {/* Map + Form */}
+        {/* Map + Ulasan */}
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-[44px] items-start">
           {/* Map */}
-          <div className="w-full lg:w-[564px] h-[400px] md:h-[500px] lg:h-[603px] rounded-[20px] overflow-hidden shrink-0">
+          <div className="w-full lg:w-[564px] h-[400px] rounded-[20px] overflow-hidden shrink-0">
             <iframe
               title="Lokasi PT. KALPA KOMPUTER BALI"
               width="100%"
@@ -87,75 +65,13 @@ export function KontakKami() {
             />
           </div>
 
-          {/* Form */}
+          {/* Google Reviews */}
           <div className="flex-1">
-            <h3 className="font-bold text-[26px] md:text-[30px] text-black mb-3">Kirim Pesan kepada Kami</h3>
+            <h3 className="font-bold text-[26px] md:text-[30px] text-black mb-3">Ulasan Pelanggan</h3>
             <p className="text-[#929292] font-medium text-[14px] md:text-[16px] mb-8 leading-relaxed max-w-[600px]">
-              Sampaikan kebutuhan Anda melalui formulir berikut dan kami akan segera menindakanjutinya
+              Apa kata pelanggan kami tentang layanan PT. Kalpa Komputer Bali
             </p>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <input
-                  type="text"
-                  placeholder="Nama Depan*"
-                  value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                  required
-                  className="flex-1 border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors"
-                />
-                <input
-                  type="text"
-                  placeholder="Nama Belakang*"
-                  value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                  required
-                  className="flex-1 border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <input
-                  type="email"
-                  placeholder="Email*"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  className="flex-1 border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors"
-                />
-                <input
-                  type="tel"
-                  placeholder="Nomor Telepon*"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  required
-                  className="flex-1 border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors"
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="Subjek*"
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                required
-                className="w-full border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors"
-              />
-              <textarea
-                placeholder="Pesan*"
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                required
-                rows={5}
-                className="w-full border border-[#929292] rounded-[10px] px-4 py-4 text-[15px] placeholder-[#929292] bg-transparent outline-none focus:border-[#01341b] transition-colors resize-none"
-              />
-              <div>
-                <button
-                  type="submit"
-                  className="bg-[#f2f2f2] hover:bg-[#e0e0e0] text-black font-semibold text-[13px] md:text-[14px] rounded-[10px] px-5 py-3 transition-colors"
-                >
-                  Kirim Pesan
-                </button>
-              </div>
-            </form>
+            <div dangerouslySetInnerHTML={{__html: `<div class='trustindex-widget' data-widget-id='aef63b3767961676779661affc6'></div><script defer async src='https://cdn.trustindex.io/loader.js?aef63b3767961676779661affc6'></script>`}} />
           </div>
         </div>
       </div>

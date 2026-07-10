@@ -126,7 +126,11 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
-      <div className="relative bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+      <div
+        className={`relative bg-white rounded-xl w-full max-h-[90vh] overflow-y-auto m-4 ${
+          success || errorMsg ? "max-w-sm" : "max-w-2xl"
+        }`}
+      >
         {!success && !errorMsg && (
           <button
             onClick={handleClose}
@@ -136,13 +140,15 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
           </button>
         )}
 
-        <div className="p-6 border-b">
-          <h2 className="text-2xl font-bold text-[#1E3A5F] text-center">Ajukan Servis On-Site</h2>
-        </div>
+        {!success && !errorMsg && (
+          <div className="p-6 border-b">
+            <h2 className="text-2xl font-bold text-[#1E3A5F] text-center">Ajukan Servis On-Site</h2>
+          </div>
+        )}
 
         {/* SUCCESS POPUP */}
         {success ? (
-          <div className="flex flex-col items-center justify-center text-center px-8 py-10 gap-3">
+          <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
             <div className="bg-green-100 rounded-full p-3">
               <RiCheckLine className="w-7 h-7 text-green-600" />
             </div>
@@ -159,7 +165,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
           </div>
         ) : errorMsg ? (
           /* ERROR POPUP */
-          <div className="flex flex-col items-center justify-center text-center px-8 py-10 gap-3">
+          <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
             <div className="bg-red-100 rounded-full p-3">
               <RiCloseLine className="w-7 h-7 text-red-500" />
             </div>
@@ -178,7 +184,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
             {/* Nama & No WA */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="nama">Nama Lengkap *</Label>
+                <Label htmlFor="nama">Nama Pelanggan *</Label>
                 <Input
                   id="nama"
                   placeholder="Nama Lengkap"
@@ -216,7 +222,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
             {/* Link Maps */}
             <div>
-              <Label htmlFor="link_maps">Link Google Maps (opsional)</Label>
+              <Label htmlFor="link_maps">Link Google Maps *</Label>
               <Input
                 id="link_maps"
                 placeholder="https://maps.google.com/..."
