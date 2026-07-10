@@ -18,7 +18,7 @@ export function TrackingStatus({ onPopupOpen }: TrackingStatusProps) {
           {/* Content */}
           <div className="flex-1 order-2 lg:order-1">
             <h2 className="font-black text-[28px] md:text-[36px] text-black mb-6">
-              Tracking Status Servis On-Site
+              Tracking Status Servis Workshop
             </h2>
 
             <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed max-w-[598px]">

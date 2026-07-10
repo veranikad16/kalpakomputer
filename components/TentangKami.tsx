@@ -24,18 +24,33 @@ export function TentangKami() {
   return (
     <section id="tentang-kami" className="bg-white py-16 md:py-20">
       <div className="max-w-[1440px] mx-auto px-6 md:px-16">
-        {/* Title */}
-        <div className="text-center mb-10 md:mb-14">
-          <h2 className="font-black text-3xl md:text-[36px] text-black mb-5">Tentang Kami</h2>
-          <p className="text-[#929292] font-medium text-[14px] md:text-[15px] max-w-[877px] mx-auto leading-relaxed">
-            PT. KALPA KOMPUTER BALI adalah perusahaan layanan teknologi yang berfokus pada servis perangkat komputer dan instalasi jaringan untuk kebutuhan rumah, UMKM, hingga perkantoran. Dengan teknisi berpengalaman dan pelayanan yang responsif, kami berkomitmen memberikan solusi yang andal, efisien, dan berkelanjutan sesuai kebutuhan pelanggan
-          </p>
-        </div>
+
+      {/* Title */}
+      <div className="mb-10 md:mb-14">
+        <h2 className="font-black text-3xl md:text-[36px] text-black mb-5 text-center">Tentang Kami</h2>
+  
+      <div className="max-w-[877px] mx-auto">
+        <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed mb-4 text-justify">
+        PT. Kalpa Komputer Bali lahir dari semangat dan dedikasi I Made Purtiasa sebagai pendiri sekaligus Direktur perusahaan. Pada tanggal 6 Januari 2023, perusahaan ini resmi didaftarkan ke Kementerian Hukum dan Hak Asasi Manusia Republik Indonesia, dan berhasil memperoleh Sertifikat Pendaftaran Pendirian Perseroan Perorangan Nomor: AHU-001290.AH.01.30.Tahun 2023.
+        </p>
+        <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed mb-4 text-justify">
+          Berkedudukan di Kabupaten Badung, Bali, PT. Kalpa Komputer Bali hadir untuk memenuhi kebutuhan teknologi masyarakat Bali dengan layanan yang profesional, terpercaya, dan terjangkau. Perusahaan ini bergerak di bidang:
+        </p>
+      <ul className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed mb-4 space-y-1">
+        <li>• Industri Komputer dan/atau Perakitan Komputer (KBLI 26210)</li>
+        <li>• Industri Peralatan Audio dan Video Elektronik (KBLI 26490)</li>
+        <li>• Aktivitas Teknologi Informasi dan Jasa Komputer Lainnya (KBLI 62090)</li>
+      </ul>
+        <p className="text-[#929292] font-medium text-[14px] md:text-[15px] leading-relaxed text-justify">
+          Dengan pengalaman dan komitmen yang terus berkembang, PT. Kalpa Komputer Bali berkomitmen untuk menjadi mitra teknologi terpercaya bagi individu, sekolah, villa, kantor, dan berbagai instansi di Bali.
+        </p>
+      </div>
+    </div>
 
         {/* Main Image */}
         <div className="rounded-[20px] overflow-hidden mb-10 md:mb-14">
           <img
-            src="/tentangkami.jpg"
+            src="/tentangkami.png"
             alt="Tentang Kami"
             className="w-full h-[300px] md:h-[420px] lg:h-[542px] object-cover"
           />

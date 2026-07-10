@@ -178,7 +178,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
             {/* Nama & No WA */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="nama">Nama Lengkap *</Label>
+                <Label htmlFor="nama">Nama Pelanggan *</Label>
                 <Input
                   id="nama"
                   placeholder="Nama Lengkap"
@@ -216,7 +216,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
             {/* Link Maps */}
             <div>
-              <Label htmlFor="link_maps">Link Google Maps (opsional)</Label>
+              <Label htmlFor="link_maps">Link Google Maps *</Label>
               <Input
                 id="link_maps"
                 placeholder="https://maps.google.com/..."
