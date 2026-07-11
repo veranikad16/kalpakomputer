@@ -71,7 +71,7 @@ export function TrackingStatus({ onPopupOpen }: TrackingStatusProps) {
           {/* Image */}
           <div className="w-full lg:w-[542px] h-[320px] md:h-[420px] lg:h-[508px] rounded-[20px] overflow-hidden shrink-0 order-1 lg:order-2">
             <img
-              src="/teknisi.JPG"
+              src="/teknisi.png"
               alt="Tracking Status Servis On-Site"
               className="w-full h-full object-cover"
             />
