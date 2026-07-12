@@ -46,7 +46,6 @@ interface Servis {
   tanggal_masuk: string;
   target_selesai: string | null;
   status: string;
-  catatan_admin: string | null;
   kode_tracking: string | null;
   teknisi_id: string | null;
   created_at: string;
@@ -67,7 +66,6 @@ interface ServisForm {
   tanggal_masuk: string;
   target_selesai: string;
   status: string;
-  catatan_admin: string;
 }
 
 const emptyForm: ServisForm = {
@@ -79,7 +77,6 @@ const emptyForm: ServisForm = {
   tanggal_masuk: "",
   target_selesai: "",
   status: "Menunggu Konfirmasi",
-  catatan_admin: "",
 };
 
 const STATUS_LIST = [
@@ -380,12 +377,14 @@ function ServisModal({
   onSave,
   initial,
   loading,
+  mode,
 }: {
   open: boolean;
   onClose: () => void;
   onSave: (data: ServisForm) => Promise<void>;
   initial: ServisForm;
   loading: boolean;
+  mode: "add" | "edit";
 }) {
   const [form, setForm] = useState<ServisForm>(emptyForm);
 
@@ -410,7 +409,7 @@ function ServisModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">
-            {initial.nama ? "Edit Servis" : "Tambah Servis"}
+            {mode === "edit" ? "Edit Servis" : "Tambah Servis"}
           </h2>
           <button
             onClick={onClose}
@@ -505,35 +504,25 @@ function ServisModal({
             </div>
           </div>
 
-          {/* Status */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="status">Status</Label>
-            <select
-              id="status"
-              value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            >
-              {STATUS_LIST.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Catatan Admin */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="catatan">Catatan Admin</Label>
-            <textarea
-              id="catatan"
-              rows={2}
-              placeholder="Catatan internal admin (opsional)..."
-              value={form.catatan_admin}
-              onChange={(e) => handleChange("catatan_admin", e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none dark:bg-input/30"
-            />
-          </div>
+          {/* Status — hanya ditampilkan saat mode edit.
+              Saat tambah servis baru, status selalu default "Menunggu Konfirmasi". */}
+          {mode === "edit" && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={form.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+                className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              >
+                {STATUS_LIST.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -738,28 +727,34 @@ export default function ServisWorkshopPage() {
       tanggal_masuk: form.tanggal_masuk,
       target_selesai: form.target_selesai || null,
       status: form.status,
-      catatan_admin: form.catatan_admin || null,
     };
 
     if (needsKode) {
       payload.kode_tracking = generateKodeTracking();
     }
 
+    let error;
     if (editTarget) {
-      const { error } = await supabase
+      ({ error } = await supabase
         .from("servis_workshop")
         .update(payload)
-        .eq("id", editTarget.id);
-      if (error) console.error(error);
+        .eq("id", editTarget.id));
     } else {
-      const { error } = await supabase
-        .from("servis_workshop")
-        .insert([payload]);
-      if (error) console.error(error);
+      ({ error } = await supabase.from("servis_workshop").insert([payload]));
+    }
+
+    setModalLoading(false);
+
+    if (error) {
+      // Dulu error di sini hanya di-console.error, sementara modal tetap
+      // ditutup seolah-olah berhasil. Sekarang errornya ditampilkan
+      // dan modal TIDAK ditutup supaya kamu bisa lihat penyebabnya & coba lagi.
+      console.error("Gagal menyimpan servis:", error);
+      alert("Gagal menyimpan data servis: " + error.message);
+      return;
     }
 
     await fetchData();
-    setModalLoading(false);
     setModalOpen(false);
     setEditTarget(null);
   };
@@ -783,6 +778,7 @@ export default function ServisWorkshopPage() {
 
     if (error) {
       console.error("Gagal update status:", error);
+      alert("Gagal update status: " + error.message);
       return;
     }
 
@@ -822,7 +818,12 @@ export default function ServisWorkshopPage() {
       .from("servis_workshop")
       .delete()
       .eq("id", deleteTarget.id);
-    if (error) console.error(error);
+    if (error) {
+      console.error(error);
+      alert("Gagal menghapus data: " + error.message);
+      setDeleteLoading(false);
+      return;
+    }
     await fetchData();
     setDeleteLoading(false);
     setDeleteOpen(false);
@@ -864,7 +865,6 @@ export default function ServisWorkshopPage() {
         tanggal_masuk: editTarget.tanggal_masuk,
         target_selesai: editTarget.target_selesai ?? "",
         status: editTarget.status,
-        catatan_admin: editTarget.catatan_admin ?? "",
       }
     : emptyForm;
 
@@ -1187,6 +1187,7 @@ export default function ServisWorkshopPage() {
         onSave={handleSave}
         initial={formInitial}
         loading={modalLoading}
+        mode={editTarget ? "edit" : "add"}
       />
 
       <DeleteModal
