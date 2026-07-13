@@ -237,19 +237,26 @@ function AssignTeknisiModal({
   const tersedia = teknisiList.filter((t) => !sibukIds.includes(t.id));
   const sibuk = teknisiList.filter((t) => sibukIds.includes(t.id));
 
+  // Teknisi yang sedang jadi teknisi asli servis ini tetap boleh ditampilkan
+  // sebagai "terpilih" walau kebetulan masuk daftar sibuk (mis. saat re-assign),
+  // tapi TIDAK boleh dipilih ulang oleh admin kalau statusnya sibuk terhadap servis lain.
   const handleSelect = (teknisiId: string) => {
+    // Admin tidak diperbolehkan memilih teknisi yang sibuk sama sekali.
+    if (sibukIds.includes(teknisiId)) return;
     setSelected(teknisiId);
-    if (sibukIds.includes(teknisiId) && servis) {
-      setWarning(
-        `⚠️ Teknisi ini sudah ada jadwal di tanggal ${formatDate(servis.tanggal_masuk)}. Tetap bisa di-assign.`
-      );
-    } else {
-      setWarning("");
-    }
+    setWarning("");
   };
 
   const handleAssign = async () => {
     if (!selected) return;
+    // Pengaman tambahan: tolak assign kalau ternyata teknisi terpilih sibuk
+    // (mis. race condition antara fetch jadwal & klik tombol).
+    if (sibukIds.includes(selected)) {
+      setWarning(
+        "⚠️ Teknisi ini sedang sibuk di tanggal tersebut dan tidak bisa di-assign. Pilih teknisi lain."
+      );
+      return;
+    }
     setLoading(true);
     await onAssign(selected);
     setLoading(false);
@@ -327,12 +334,11 @@ function AssignTeknisiModal({
               {sibuk.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => handleSelect(t.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors ${
-                    selected === t.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-border hover:bg-muted opacity-60"
-                  }`}
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Teknisi ini sudah punya jadwal di tanggal yang sama dan tidak bisa dipilih"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-muted/40 text-left opacity-60 cursor-not-allowed select-none"
                 >
                   <div className="size-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                     <RiUserLine className="size-4 text-red-500" />
@@ -346,6 +352,10 @@ function AssignTeknisiModal({
                   </span>
                 </button>
               ))}
+              <p className="text-[11px] text-muted-foreground italic">
+                Teknisi berstatus &quot;Sibuk&quot; sudah punya jadwal servis lain di
+                tanggal ini, sehingga tidak bisa dipilih.
+              </p>
             </div>
           )}
 
@@ -360,7 +370,10 @@ function AssignTeknisiModal({
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Batal
           </Button>
-          <Button onClick={handleAssign} disabled={loading || !selected}>
+          <Button
+            onClick={handleAssign}
+            disabled={loading || !selected || sibukIds.includes(selected)}
+          >
             {loading ? "Menyimpan..." : "Assign Teknisi"}
           </Button>
         </div>
@@ -666,6 +679,26 @@ export default function ServisWorkshopPage() {
     if (!assignTarget) return;
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
+
+    // Pengaman terakhir di level server-action: cek ulang jadwal bentrok
+    // sebelum benar-benar menyimpan, supaya tidak ada celah race condition
+    // antara data yang dilihat admin di modal dengan kondisi terbaru di DB.
+    const { data: bentrok } = await supabase
+      .from("servis_workshop")
+      .select("id")
+      .eq("tanggal_masuk", assignTarget.tanggal_masuk)
+      .eq("teknisi_id", teknisiId)
+      .not("id", "eq", assignTarget.id)
+      .not("status", "in", '("Dibatalkan","Selesai")');
+
+    if (bentrok && bentrok.length > 0) {
+      alert(
+        `${teknisi.nama} sudah punya jadwal servis lain di tanggal ${formatDate(
+          assignTarget.tanggal_masuk
+        )}. Silakan pilih teknisi lain.`
+      );
+      return;
+    }
 
     const kodeTracking =
       assignTarget.kode_tracking ?? generateKodeTracking();
