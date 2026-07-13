@@ -94,7 +94,9 @@ export function PopupDetailProduk({ produk, onClose }: PopupDetailProdukProps) {
 
             {/* Deskripsi */}
             {produk.deskripsi && (
-              <p className="text-gray-600 text-sm leading-relaxed">{produk.deskripsi}</p>
+              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+                {produk.deskripsi}
+              </p>
             )}
 
             {/* Spesifikasi */}

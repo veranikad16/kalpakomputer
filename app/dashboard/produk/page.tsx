@@ -31,6 +31,7 @@ const emptyForm = {
   nama: "",
   harga: "",
   kategori: "",
+  kategoriLainnya: "",
   deskripsi: "",
   tampil_di_homepage: false,
 };
@@ -95,10 +96,14 @@ export default function ProdukDashboardPage() {
   // Open modal for edit
   const openEdit = (p: Produk) => {
     setEditingProduct(p);
+    // Jika kategori produk tidak ada di daftar opsi bawaan,
+    // berarti sebelumnya diisi manual lewat "Lainnya"
+    const isCustomKategori = !!p.kategori && !KATEGORI_OPTIONS.includes(p.kategori);
     setForm({
       nama: p.nama,
       harga: p.harga,
-      kategori: p.kategori,
+      kategori: isCustomKategori ? "Lainnya" : p.kategori,
+      kategoriLainnya: isCustomKategori ? p.kategori : "",
       deskripsi: p.deskripsi || "",
       tampil_di_homepage: p.tampil_di_homepage,
     });
@@ -145,7 +150,10 @@ export default function ProdukDashboardPage() {
   };
 
   const handleSave = async () => {
-    if (!form.nama.trim() || !form.harga.trim() || !form.kategori.trim()) {
+    const kategoriFinal =
+      form.kategori === "Lainnya" ? form.kategoriLainnya.trim() : form.kategori;
+
+    if (!form.nama.trim() || !form.harga.trim() || !kategoriFinal) {
       toast.error("Nama, harga, dan kategori wajib diisi");
       return;
     }
@@ -164,7 +172,7 @@ export default function ProdukDashboardPage() {
       const payload = {
         nama: form.nama.trim(),
         harga: form.harga.trim(),
-        kategori: form.kategori,
+        kategori: kategoriFinal,
         deskripsi: form.deskripsi.trim() || null,
         gambar_urls,
         tampil_di_homepage: form.tampil_di_homepage,
@@ -345,7 +353,14 @@ export default function ProdukDashboardPage() {
                 <label className="text-sm font-medium">Kategori <span className="text-red-500">*</span></label>
                 <select
                   value={form.kategori}
-                  onChange={(e) => setForm((f) => ({ ...f, kategori: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      kategori: e.target.value,
+                      // reset input custom kalau pindah dari "Lainnya" ke opsi lain
+                      kategoriLainnya: e.target.value === "Lainnya" ? f.kategoriLainnya : "",
+                    }))
+                  }
                   className="border rounded-lg px-3 py-2 text-sm outline-none focus:border-[#01341b] bg-white"
                 >
                   <option value="">Pilih kategori...</option>
@@ -353,6 +368,18 @@ export default function ProdukDashboardPage() {
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
+
+                {/* Input custom muncul hanya jika "Lainnya" dipilih */}
+                {form.kategori === "Lainnya" && (
+                  <input
+                    type="text"
+                    value={form.kategoriLainnya}
+                    onChange={(e) => setForm((f) => ({ ...f, kategoriLainnya: e.target.value }))}
+                    placeholder="Tulis kategori baru..."
+                    autoFocus
+                    className="mt-2 border rounded-lg px-3 py-2 text-sm outline-none focus:border-[#01341b]"
+                  />
+                )}
               </div>
 
               {/* Deskripsi */}
