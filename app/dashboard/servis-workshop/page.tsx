@@ -46,7 +46,6 @@ interface Servis {
   tanggal_masuk: string;
   target_selesai: string | null;
   status: string;
-  catatan_admin: string | null;
   kode_tracking: string | null;
   teknisi_id: string | null;
   created_at: string;
@@ -67,7 +66,6 @@ interface ServisForm {
   tanggal_masuk: string;
   target_selesai: string;
   status: string;
-  catatan_admin: string;
 }
 
 const emptyForm: ServisForm = {
@@ -79,7 +77,6 @@ const emptyForm: ServisForm = {
   tanggal_masuk: "",
   target_selesai: "",
   status: "Menunggu Konfirmasi",
-  catatan_admin: "",
 };
 
 const STATUS_LIST = [
@@ -240,19 +237,26 @@ function AssignTeknisiModal({
   const tersedia = teknisiList.filter((t) => !sibukIds.includes(t.id));
   const sibuk = teknisiList.filter((t) => sibukIds.includes(t.id));
 
+  // Teknisi yang sedang jadi teknisi asli servis ini tetap boleh ditampilkan
+  // sebagai "terpilih" walau kebetulan masuk daftar sibuk (mis. saat re-assign),
+  // tapi TIDAK boleh dipilih ulang oleh admin kalau statusnya sibuk terhadap servis lain.
   const handleSelect = (teknisiId: string) => {
+    // Admin tidak diperbolehkan memilih teknisi yang sibuk sama sekali.
+    if (sibukIds.includes(teknisiId)) return;
     setSelected(teknisiId);
-    if (sibukIds.includes(teknisiId) && servis) {
-      setWarning(
-        `⚠️ Teknisi ini sudah ada jadwal di tanggal ${formatDate(servis.tanggal_masuk)}. Tetap bisa di-assign.`
-      );
-    } else {
-      setWarning("");
-    }
+    setWarning("");
   };
 
   const handleAssign = async () => {
     if (!selected) return;
+    // Pengaman tambahan: tolak assign kalau ternyata teknisi terpilih sibuk
+    // (mis. race condition antara fetch jadwal & klik tombol).
+    if (sibukIds.includes(selected)) {
+      setWarning(
+        "⚠️ Teknisi ini sedang sibuk di tanggal tersebut dan tidak bisa di-assign. Pilih teknisi lain."
+      );
+      return;
+    }
     setLoading(true);
     await onAssign(selected);
     setLoading(false);
@@ -330,12 +334,11 @@ function AssignTeknisiModal({
               {sibuk.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => handleSelect(t.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors ${
-                    selected === t.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-border hover:bg-muted opacity-60"
-                  }`}
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Teknisi ini sudah punya jadwal di tanggal yang sama dan tidak bisa dipilih"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-muted/40 text-left opacity-60 cursor-not-allowed select-none"
                 >
                   <div className="size-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                     <RiUserLine className="size-4 text-red-500" />
@@ -349,6 +352,10 @@ function AssignTeknisiModal({
                   </span>
                 </button>
               ))}
+              <p className="text-[11px] text-muted-foreground italic">
+                Teknisi berstatus &quot;Sibuk&quot; sudah punya jadwal servis lain di
+                tanggal ini, sehingga tidak bisa dipilih.
+              </p>
             </div>
           )}
 
@@ -363,7 +370,10 @@ function AssignTeknisiModal({
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Batal
           </Button>
-          <Button onClick={handleAssign} disabled={loading || !selected}>
+          <Button
+            onClick={handleAssign}
+            disabled={loading || !selected || sibukIds.includes(selected)}
+          >
             {loading ? "Menyimpan..." : "Assign Teknisi"}
           </Button>
         </div>
@@ -380,12 +390,14 @@ function ServisModal({
   onSave,
   initial,
   loading,
+  mode,
 }: {
   open: boolean;
   onClose: () => void;
   onSave: (data: ServisForm) => Promise<void>;
   initial: ServisForm;
   loading: boolean;
+  mode: "add" | "edit";
 }) {
   const [form, setForm] = useState<ServisForm>(emptyForm);
 
@@ -410,7 +422,7 @@ function ServisModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">
-            {initial.nama ? "Edit Servis" : "Tambah Servis"}
+            {mode === "edit" ? "Edit Servis" : "Tambah Servis"}
           </h2>
           <button
             onClick={onClose}
@@ -505,35 +517,25 @@ function ServisModal({
             </div>
           </div>
 
-          {/* Status */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="status">Status</Label>
-            <select
-              id="status"
-              value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            >
-              {STATUS_LIST.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Catatan Admin */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="catatan">Catatan Admin</Label>
-            <textarea
-              id="catatan"
-              rows={2}
-              placeholder="Catatan internal admin (opsional)..."
-              value={form.catatan_admin}
-              onChange={(e) => handleChange("catatan_admin", e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none dark:bg-input/30"
-            />
-          </div>
+          {/* Status — hanya ditampilkan saat mode edit.
+              Saat tambah servis baru, status selalu default "Menunggu Konfirmasi". */}
+          {mode === "edit" && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={form.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+                className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              >
+                {STATUS_LIST.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -678,6 +680,26 @@ export default function ServisWorkshopPage() {
     const teknisi = teknisiList.find((t) => t.id === teknisiId);
     if (!teknisi) return;
 
+    // Pengaman terakhir di level server-action: cek ulang jadwal bentrok
+    // sebelum benar-benar menyimpan, supaya tidak ada celah race condition
+    // antara data yang dilihat admin di modal dengan kondisi terbaru di DB.
+    const { data: bentrok } = await supabase
+      .from("servis_workshop")
+      .select("id")
+      .eq("tanggal_masuk", assignTarget.tanggal_masuk)
+      .eq("teknisi_id", teknisiId)
+      .not("id", "eq", assignTarget.id)
+      .not("status", "in", '("Dibatalkan","Selesai")');
+
+    if (bentrok && bentrok.length > 0) {
+      alert(
+        `${teknisi.nama} sudah punya jadwal servis lain di tanggal ${formatDate(
+          assignTarget.tanggal_masuk
+        )}. Silakan pilih teknisi lain.`
+      );
+      return;
+    }
+
     const kodeTracking =
       assignTarget.kode_tracking ?? generateKodeTracking();
 
@@ -738,28 +760,34 @@ export default function ServisWorkshopPage() {
       tanggal_masuk: form.tanggal_masuk,
       target_selesai: form.target_selesai || null,
       status: form.status,
-      catatan_admin: form.catatan_admin || null,
     };
 
     if (needsKode) {
       payload.kode_tracking = generateKodeTracking();
     }
 
+    let error;
     if (editTarget) {
-      const { error } = await supabase
+      ({ error } = await supabase
         .from("servis_workshop")
         .update(payload)
-        .eq("id", editTarget.id);
-      if (error) console.error(error);
+        .eq("id", editTarget.id));
     } else {
-      const { error } = await supabase
-        .from("servis_workshop")
-        .insert([payload]);
-      if (error) console.error(error);
+      ({ error } = await supabase.from("servis_workshop").insert([payload]));
+    }
+
+    setModalLoading(false);
+
+    if (error) {
+      // Dulu error di sini hanya di-console.error, sementara modal tetap
+      // ditutup seolah-olah berhasil. Sekarang errornya ditampilkan
+      // dan modal TIDAK ditutup supaya kamu bisa lihat penyebabnya & coba lagi.
+      console.error("Gagal menyimpan servis:", error);
+      alert("Gagal menyimpan data servis: " + error.message);
+      return;
     }
 
     await fetchData();
-    setModalLoading(false);
     setModalOpen(false);
     setEditTarget(null);
   };
@@ -783,6 +811,7 @@ export default function ServisWorkshopPage() {
 
     if (error) {
       console.error("Gagal update status:", error);
+      alert("Gagal update status: " + error.message);
       return;
     }
 
@@ -822,7 +851,12 @@ export default function ServisWorkshopPage() {
       .from("servis_workshop")
       .delete()
       .eq("id", deleteTarget.id);
-    if (error) console.error(error);
+    if (error) {
+      console.error(error);
+      alert("Gagal menghapus data: " + error.message);
+      setDeleteLoading(false);
+      return;
+    }
     await fetchData();
     setDeleteLoading(false);
     setDeleteOpen(false);
@@ -864,7 +898,6 @@ export default function ServisWorkshopPage() {
         tanggal_masuk: editTarget.tanggal_masuk,
         target_selesai: editTarget.target_selesai ?? "",
         status: editTarget.status,
-        catatan_admin: editTarget.catatan_admin ?? "",
       }
     : emptyForm;
 
@@ -1187,6 +1220,7 @@ export default function ServisWorkshopPage() {
         onSave={handleSave}
         initial={formInitial}
         loading={modalLoading}
+        mode={editTarget ? "edit" : "add"}
       />
 
       <DeleteModal
