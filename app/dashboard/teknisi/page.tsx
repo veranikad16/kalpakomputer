@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Pencil, Trash2, CalendarDays, History, Eye, EyeOff } from "lucide-react"
+import { Plus, Pencil, Trash2, CalendarDays, History, Eye, EyeOff, MapPin, Store } from "lucide-react"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,20 +44,24 @@ type Teknisi = {
   created_at: string
 }
 
-type ServisOnsite = {
+type JenisJadwal = "workshop" | "onsite"
+
+// Bentuk gabungan (unified) dari servis_workshop & servis_onsite,
+// mengikuti pola yang sama seperti di dashboard teknisi (TeknisiPage),
+// supaya penugasan workshop maupun onsite sama-sama muncul di sini.
+type Jadwal = {
   id: string
+  jenis: JenisJadwal
   nama: string
   nomor_whatsapp: string
-  alamat: string
-  jenis_lokasi: string
+  alamat: string | null // hanya onsite
+  jenis_lokasi: string | null // hanya onsite
   jenis_perangkat: string
   tipe_merk: string
-  jenis_layanan: string
+  jenis_layanan: string | null // hanya onsite
   keluhan: string
-  tanggal_kunjungan: string
+  tanggal: string // tanggal_kunjungan (onsite) atau tanggal_masuk (workshop)
   status: string
-  created_at: string
-  teknisi_id: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,6 +74,11 @@ const STATUS_COLORS: Record<string, string> = {
   "Dibatalkan": "bg-gray-100 text-gray-700 border-gray-200",
 }
 
+const JENIS_BADGE: Record<JenisJadwal, string> = {
+  workshop: "bg-purple-100 text-purple-700 border-purple-200",
+  onsite: "bg-cyan-100 text-cyan-700 border-cyan-200",
+}
+
 function formatTanggal(dateStr: string) {
   if (!dateStr) return "-"
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -78,6 +87,16 @@ function formatTanggal(dateStr: string) {
     month: "long",
     year: "numeric",
   })
+}
+
+function isImageUrl(value: string) {
+  if (!value) return false
+  const trimmed = value.trim()
+  if (!/^https?:\/\//i.test(trimmed)) return false
+  return (
+    /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(trimmed) ||
+    trimmed.includes("/storage/v1/object/")
+  )
 }
 
 // ─── Modal Form Teknisi ───────────────────────────────────────────────────────
@@ -201,13 +220,13 @@ function TeknisiDetailModal({
   open: boolean
   onClose: () => void
   teknisi: Teknisi | null
-  tugasList: ServisOnsite[]
+  tugasList: Jadwal[]
 }) {
   if (!teknisi) return null
 
-  const grouped: Record<string, ServisOnsite[]> = {}
+  const grouped: Record<string, Jadwal[]> = {}
   tugasList.forEach((t) => {
-    const key = t.tanggal_kunjungan
+    const key = t.tanggal
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(t)
   })
@@ -250,7 +269,7 @@ function TeknisiDetailModal({
                     <div className="space-y-2">
                       {grouped[date]
                         .filter((t) => t.status !== "Selesai" && t.status !== "Dibatalkan")
-                        .map((t) => <ServisCard key={t.id} servis={t} />)}
+                        .map((t) => <ServisCard key={`${t.jenis}-${t.id}`} servis={t} />)}
                     </div>
                   </div>
                 ))
@@ -269,7 +288,7 @@ function TeknisiDetailModal({
                     {formatTanggal(date)}
                   </p>
                   <div className="space-y-2">
-                    {grouped[date].map((t) => <ServisCard key={t.id} servis={t} />)}
+                    {grouped[date].map((t) => <ServisCard key={`${t.jenis}-${t.id}`} servis={t} />)}
                   </div>
                 </div>
               ))
@@ -281,18 +300,38 @@ function TeknisiDetailModal({
   )
 }
 
-function ServisCard({ servis }: { servis: ServisOnsite }) {
+function ServisCard({ servis }: { servis: Jadwal }) {
   return (
-    <div className="border rounded-lg p-3 text-sm space-y-1 bg-muted/30">
-      <div className="flex items-center justify-between">
+    <div className="border rounded-lg p-3 text-sm space-y-1.5 bg-muted/30">
+      <div className="flex items-center justify-between gap-2">
         <span className="font-medium">{servis.nama}</span>
-        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[servis.status] ?? "bg-gray-100 text-gray-700"}`}>
-          {servis.status}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${JENIS_BADGE[servis.jenis]}`}
+          >
+            {servis.jenis === "onsite" ? (
+              <MapPin className="h-2.5 w-2.5" />
+            ) : (
+              <Store className="h-2.5 w-2.5" />
+            )}
+            {servis.jenis === "onsite" ? "Onsite" : "Workshop"}
+          </span>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+              STATUS_COLORS[servis.status] ?? "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {servis.status}
+          </span>
+        </div>
       </div>
-      <p className="text-muted-foreground">{servis.alamat}</p>
       <p className="text-muted-foreground">
-        {servis.jenis_perangkat} · {servis.tipe_merk} · {servis.jenis_layanan}
+        {servis.jenis === "onsite" ? servis.alamat : "Servis di workshop"}
+      </p>
+      <p className="text-muted-foreground">
+        {servis.jenis_perangkat} ·{" "}
+        {isImageUrl(servis.tipe_merk) ? "Foto tipe/merk" : servis.tipe_merk}
+        {servis.jenis_layanan ? ` · ${servis.jenis_layanan}` : ""}
       </p>
       <p className="text-muted-foreground italic">{servis.keluhan}</p>
     </div>
@@ -313,7 +352,7 @@ export default function ManajemenTeknisiPage() {
 
   const [detailTarget, setDetailTarget] = useState<Teknisi | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const [detailTugas, setDetailTugas] = useState<ServisOnsite[]>([])
+  const [detailTugas, setDetailTugas] = useState<Jadwal[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
   // Password visibility per row
@@ -354,16 +393,66 @@ export default function ManajemenTeknisiPage() {
     await fetchTeknisi()
   }
 
+  // Ambil penugasan teknisi dari KEDUA tabel (servis_workshop & servis_onsite)
+  // dan gabungkan jadi satu list dengan diskriminator `jenis`, sama seperti
+  // pola yang dipakai di dashboard teknisi (TeknisiPage). Sebelumnya di sini
+  // hanya query ke servis_onsite, makanya penugasan workshop tidak muncul.
   const handleOpenDetail = async (teknisi: Teknisi) => {
     setDetailTarget(teknisi)
     setDetailOpen(true)
     setDetailLoading(true)
-    const { data } = await supabase
-      .from("servis_onsite")
-      .select("*")
-      .eq("teknisi_id", teknisi.id)
-      .order("tanggal_kunjungan", { ascending: true })
-    setDetailTugas(data ?? [])
+
+    const [workshopRes, onsiteRes] = await Promise.all([
+      supabase
+        .from("servis_workshop")
+        .select("*")
+        .eq("teknisi_id", teknisi.id)
+        .order("tanggal_masuk", { ascending: true }),
+      supabase
+        .from("servis_onsite")
+        .select("*")
+        .eq("teknisi_id", teknisi.id)
+        .order("tanggal_kunjungan", { ascending: true }),
+    ])
+
+    if (workshopRes.error) console.error("Gagal ambil servis_workshop:", workshopRes.error)
+    if (onsiteRes.error) console.error("Gagal ambil servis_onsite:", onsiteRes.error)
+
+    const workshopJadwal: Jadwal[] = (workshopRes.data ?? []).map((s) => ({
+      id: s.id,
+      jenis: "workshop",
+      nama: s.nama,
+      nomor_whatsapp: s.nomor_whatsapp,
+      alamat: null,
+      jenis_lokasi: null,
+      jenis_perangkat: s.jenis_perangkat,
+      tipe_merk: s.tipe_merk,
+      jenis_layanan: null,
+      keluhan: s.keluhan,
+      tanggal: s.tanggal_masuk,
+      status: s.status,
+    }))
+
+    const onsiteJadwal: Jadwal[] = (onsiteRes.data ?? []).map((s) => ({
+      id: s.id,
+      jenis: "onsite",
+      nama: s.nama,
+      nomor_whatsapp: s.nomor_whatsapp,
+      alamat: s.alamat,
+      jenis_lokasi: s.jenis_lokasi,
+      jenis_perangkat: s.jenis_perangkat,
+      tipe_merk: s.tipe_merk,
+      jenis_layanan: s.jenis_layanan,
+      keluhan: s.keluhan,
+      tanggal: s.tanggal_kunjungan,
+      status: s.status,
+    }))
+
+    const gabungan = [...workshopJadwal, ...onsiteJadwal].sort((a, b) =>
+      a.tanggal.localeCompare(b.tanggal)
+    )
+
+    setDetailTugas(gabungan)
     setDetailLoading(false)
   }
 
