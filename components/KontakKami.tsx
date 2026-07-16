@@ -79,7 +79,7 @@ export function KontakKami() {
         {/* Map + Ulasan */}
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-[44px] items-start">
           {/* Map */}
-          <div className="w-full lg:w-[564px] h-[500px] rounded-[20px] overflow-hidden shrink-0">
+          <div className="w-full lg:w-[564px] h-[600px] rounded-[20px] overflow-hidden shrink-0">
             <iframe
               title="Lokasi PT. KALPA KOMPUTER BALI"
               width="100%"
