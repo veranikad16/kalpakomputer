@@ -1,9 +1,35 @@
 "use client";
 
-import { RiWhatsappFill, RiMailFill, RiMapPinLine } from "@remixicon/react";
+import { RiWhatsappFill, RiMailFill, RiMapPinLine, RiStarFill, RiGoogleFill } from "@remixicon/react";
+
+const reviews = [
+  {
+    name: "029_Ni Kadek Ayu Intan Sita Dewi",
+    date: "5 hari lalu",
+    rating: 5,
+    text: "Laptopku microphone nya mati, terus cek disini dan ga ada biaya pengecekann, ketemu masalah dimana langsung di servis dehh dan selesai nya cepitt!",
+    initial: "N",
+    color: "bg-pink-500",
+  },
+  {
+    name: "Komang Fernando Surya Irawan",
+    date: "Seminggu lalu",
+    rating: 5,
+    text: "Saya pernah service layar laptop di sini, proses nya sangat cepat, teknisi nya sangat ramah, dan biayanya sangat terjangkau.",
+    initial: "K",
+    color: "bg-blue-500",
+  },
+  {
+    name: "Denny Supandi",
+    date: "3 bulan lalu",
+    rating: 5,
+    text: "Tempat servis komputer yang joss. Terima servis komputer, laptop, printer, sampai pasang wifi.",
+    initial: "D",
+    color: "bg-orange-500",
+  },
+];
 
 export function KontakKami() {
-
   const contactInfo = [
     {
       icon: RiMapPinLine,
@@ -65,13 +91,53 @@ export function KontakKami() {
             />
           </div>
 
-          {/* Google Reviews */}
+          {/* Ulasan Pelanggan */}
           <div className="flex-1">
-            <h3 className="font-bold text-[26px] md:text-[30px] text-black mb-3">Ulasan Pelanggan</h3>
-            <p className="text-[#929292] font-medium text-[14px] md:text-[16px] mb-8 leading-relaxed max-w-[600px]">
-              Apa kata pelanggan kami tentang layanan PT. Kalpa Komputer Bali
-            </p>
-            <div dangerouslySetInnerHTML={{__html: `<div class='trustindex-widget' data-widget-id='aef63b3767961676779661affc6'></div><script defer async src='https://cdn.trustindex.io/loader.js?aef63b3767961676779661affc6'></script>`}} />
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="font-bold text-[26px] md:text-[30px] text-black">Ulasan Pelanggan</h3>
+            </div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <RiStarFill key={i} className="w-5 h-5 text-yellow-400" />
+                ))}
+              </div>
+              <span className="text-[#929292] text-sm font-medium">5.0 · Berdasarkan ulasan Google</span>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {reviews.map((r, i) => (
+                <div key={i} className="bg-[#f9f9f9] rounded-[16px] p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`${r.color} w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>
+                        {r.initial}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-black">{r.name}</p>
+                        <p className="text-[#929292] text-xs">{r.date}</p>
+                      </div>
+                    </div>
+                    <RiGoogleFill className="w-5 h-5 text-[#4285F4]" />
+                  </div>
+                  <div className="flex mb-2">
+                    {[...Array(r.rating)].map((_, j) => (
+                      <RiStarFill key={j} className="w-4 h-4 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-[#555] text-sm leading-relaxed">{r.text}</p>
+                </div>
+              ))}
+            </div>
+
+            <a
+              href="https://maps.google.com/?q=Kalpa+Komputer+Bali"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-1 text-sm text-[#01341b] font-medium hover:underline"
+            >
+              Lihat semua ulasan di Google →
+            </a>
           </div>
         </div>
       </div>
