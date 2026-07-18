@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RiWhatsappFill, RiMailFill } from "@remixicon/react";
+import { RiWhatsappFill, RiMailFill, RiInstagramFill, RiTiktokFill } from "@remixicon/react";
 
 const logoUrl = "https://www.figma.com/api/mcp/asset/6931dbe2-393a-41e2-a36d-d417db03b2c0";
 
@@ -22,13 +22,21 @@ export function Footer() {
               Melayani sekolah, villa, kantor, dan lokasi lainnya. Pilih tanggal dan jam sesuai kebutuhan Anda
             </p>
             <div className="flex items-center gap-4">
-              <a href="https://wa.me/628174745137" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/6285785097067" target="_blank" rel="noopener noreferrer"
                 className="bg-white rounded-full size-10 flex items-center justify-center hover:bg-green-100 transition-colors">
                 <RiWhatsappFill className="size-5 text-[#01341b]" />
               </a>
               <a href="mailto:kalpakomputerbali@gmail.com"
                 className="bg-white rounded-full size-10 flex items-center justify-center hover:bg-green-100 transition-colors">
                 <RiMailFill className="size-5 text-[#01341b]" />
+              </a>
+              <a href="https://www.instagram.com/pt.kalpakomputer06?igsh=eDRrMTIwOHo0emk0" target="_blank" rel="noopener noreferrer"
+                className="bg-white rounded-full size-10 flex items-center justify-center hover:bg-green-100 transition-colors">
+                <RiInstagramFill className="size-5 text-[#01341b]" />
+              </a>
+              <a href="https://www.tiktok.com/@pt.kalpa.komputer?_r=1&_t=ZS-986mL797sMZ" target="_blank" rel="noopener noreferrer"
+                className="bg-white rounded-full size-10 flex items-center justify-center hover:bg-green-100 transition-colors">
+                <RiTiktokFill className="size-5 text-[#01341b]" />
               </a>
             </div>
           </div>
@@ -39,11 +47,25 @@ export function Footer() {
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
                 <RiWhatsappFill className="size-5 mt-0.5 shrink-0 text-white" />
-                <p className="text-[#929292] font-medium text-[14px] md:text-[15px]">+62 817-4745-137</p>
+                <p className="text-[#929292] font-medium text-[14px] md:text-[15px]">+62 857-8509-7067</p>
               </div>
               <div className="flex items-start gap-3">
                 <RiMailFill className="size-5 mt-0.5 shrink-0 text-white" />
                 <p className="text-[#929292] font-medium text-[14px] md:text-[15px]">kalpakomputerbali@gmail.com</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <RiInstagramFill className="size-5 mt-0.5 shrink-0 text-white" />
+                <a href="#" target="_blank" rel="noopener noreferrer"
+                  className="text-[#929292] font-medium text-[14px] md:text-[15px] hover:text-white transition-colors">
+                  @pt.kalpakomputer06
+                </a>
+              </div>
+              <div className="flex items-start gap-3">
+                <RiTiktokFill className="size-5 mt-0.5 shrink-0 text-white" />
+                <a href="#" target="_blank" rel="noopener noreferrer"
+                  className="text-[#929292] font-medium text-[14px] md:text-[15px] hover:text-white transition-colors">
+                  @pt.kalpa.komputer
+                </a>
               </div>
             </div>
           </div>
