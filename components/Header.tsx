@@ -37,7 +37,7 @@ export function Header() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#01341b] h-[72px] md:h-[107px]">
         <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-full flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3 cursor-pointer">
             <img
               src="/logo.png"
               alt="PT. KALPA KOMPUTER BALI Logo"
