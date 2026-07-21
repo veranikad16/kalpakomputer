@@ -68,7 +68,7 @@ export function ProdukUnggulan() {
             {products.map((product) => (
               <div
                 key={product.id}
-                className="flex flex-col cursor-pointer group"
+                className="flex flex-col h-full cursor-pointer group"
                 onClick={() => setSelectedProduk(product)}
               >
                 <div className="bg-[#f2f2f2] rounded-[15px] h-[280px] md:h-[350px] overflow-hidden flex items-center justify-center mb-4 flex-shrink-0">
@@ -83,7 +83,11 @@ export function ProdukUnggulan() {
                   )}
                 </div>
                 <div className="flex flex-col flex-1">
-                  <p className="font-semibold text-[17px] md:text-[18px] text-black mb-2">{product.nama}</p>
+                  {/* Fixed-height name block (reserves space for up to 2 lines) so
+                      cards with 1-line vs 2-line names stay the same height */}
+                  <p className="font-semibold text-[17px] md:text-[18px] text-black mb-2 line-clamp-2 min-h-[46px] md:min-h-[50px]">
+                    {product.nama}
+                  </p>
                   <p className="font-semibold text-[13px] md:text-[14px] text-[#929292] mb-2">{product.harga}</p>
                   <p className="font-semibold text-[11px] md:text-[12px] text-[#929292] tracking-wider mb-4">{product.kategori}</p>
                   <button

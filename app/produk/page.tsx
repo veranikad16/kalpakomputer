@@ -86,29 +86,35 @@ export default function ProdukPage() {
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-16"><p className="text-[#929292]">Produk tidak ditemukan</p></div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[34px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[34px] gap-y-[60px] auto-rows-fr">
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="flex flex-col gap-4 w-full cursor-pointer"
+                  className="flex flex-col gap-4 w-full h-full cursor-pointer"
                   onClick={() => setSelectedProduk(product)}
                 >
-                  <div className="bg-[#f2f2f2] h-[350px] rounded-[15px] w-full flex items-center justify-center overflow-hidden">
+                  <div className="bg-[#f2f2f2] h-[350px] rounded-[15px] w-full flex items-center justify-center overflow-hidden flex-shrink-0">
                     {product.gambar_urls?.[0] ? (
                       <img src={product.gambar_urls[0]} alt={product.nama} className="w-full h-full object-cover" />
                     ) : (
                       <p className="text-[#929292]">Gambar Produk</p>
                     )}
                   </div>
-                  <p className="font-semibold text-[18px] text-black">{product.nama}</p>
-                  <p className="font-semibold text-[14px] text-[#929292]">{product.harga}</p>
-                  <p className="font-semibold text-[12px] text-[#929292]">{product.kategori}</p>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
-                    className="rounded-[10px] h-[51px] px-4 font-semibold text-[14px] w-[127px] bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white transition-colors"
-                  >
-                    Detail Produk
-                  </button>
+
+                  {/* Wrapper ini yang membuat tombol selalu rata di bawah */}
+                  <div className="flex flex-col flex-1">
+                    <p className="font-semibold text-[18px] text-black line-clamp-2 min-h-[50px]">
+                      {product.nama}
+                    </p>
+                    <p className="font-semibold text-[14px] text-[#929292] mt-2">{product.harga}</p>
+                    <p className="font-semibold text-[12px] text-[#929292] mt-2">{product.kategori}</p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
+                      className="rounded-[10px] h-[51px] px-4 font-semibold text-[14px] w-[127px] bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white transition-colors mt-auto"
+                    >
+                      Detail Produk
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
