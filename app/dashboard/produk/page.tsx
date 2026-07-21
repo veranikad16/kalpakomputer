@@ -41,7 +41,6 @@ export default function ProdukDashboardPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Produk | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -50,7 +49,6 @@ export default function ProdukDashboardPage() {
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<Produk | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -83,7 +81,6 @@ export default function ProdukDashboardPage() {
       p.kategori?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Open modal for add
   const openAdd = () => {
     setEditingProduct(null);
     setForm(emptyForm);
@@ -93,11 +90,8 @@ export default function ProdukDashboardPage() {
     setModalOpen(true);
   };
 
-  // Open modal for edit
   const openEdit = (p: Produk) => {
     setEditingProduct(p);
-    // Jika kategori produk tidak ada di daftar opsi bawaan,
-    // berarti sebelumnya diisi manual lewat "Lainnya"
     const isCustomKategori = !!p.kategori && !KATEGORI_OPTIONS.includes(p.kategori);
     setForm({
       nama: p.nama,
@@ -160,7 +154,6 @@ export default function ProdukDashboardPage() {
 
     setSaving(true);
     try {
-      // Upload new images
       const uploadedUrls: string[] = [];
       for (const file of newImageFiles) {
         const url = await uploadImage(file);
@@ -260,8 +253,8 @@ export default function ProdukDashboardPage() {
           {filtered.map((product) => {
             const images = product.gambar_urls || [];
             return (
-              <div key={product.id} className="border rounded-lg p-4 shadow-sm">
-                <div className="h-[200px] bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden mb-3">
+              <div key={product.id} className="border rounded-lg p-4 shadow-sm flex flex-col">
+                <div className="h-[200px] bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden mb-3 flex-shrink-0">
                   {images[0] ? (
                     <img
                       src={images[0]}
@@ -273,30 +266,32 @@ export default function ProdukDashboardPage() {
                   )}
                 </div>
 
-                <h2 className="font-semibold text-lg">{product.nama}</h2>
-                <p className="text-green-700 font-bold">{product.harga}</p>
-                <p className="text-gray-500 text-sm mb-1">{product.kategori}</p>
-                {product.tampil_di_homepage && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                    Tampil di Homepage
-                  </span>
-                )}
+                <div className="flex flex-col flex-1">
+                  <h2 className="font-semibold text-lg">{product.nama}</h2>
+                  <p className="text-green-700 font-bold">{product.harga}</p>
+                  <p className="text-gray-500 text-sm mb-1">{product.kategori}</p>
+                  {product.tampil_di_homepage && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full w-fit">
+                      Tampil di Homepage
+                    </span>
+                  )}
 
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => openEdit(product)}
-                    className="flex items-center gap-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
-                  >
-                    <RiEdit2Line className="size-4" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(product)}
-                    className="flex items-center gap-1 text-sm border border-red-200 text-red-600 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
-                  >
-                    <RiDeleteBinLine className="size-4" />
-                    Hapus
-                  </button>
+                  <div className="flex gap-2 mt-auto pt-3">
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="flex items-center gap-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                    >
+                      <RiEdit2Line className="size-4" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(product)}
+                      className="flex items-center gap-1 text-sm border border-red-200 text-red-600 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
+                    >
+                      <RiDeleteBinLine className="size-4" />
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -308,7 +303,6 @@ export default function ProdukDashboardPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b">
               <h2 className="font-bold text-lg">
                 {editingProduct ? "Edit Produk" : "Tambah Produk"}
@@ -322,9 +316,7 @@ export default function ProdukDashboardPage() {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="overflow-y-auto p-5 flex flex-col gap-4 flex-1">
-              {/* Nama */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Nama Produk <span className="text-red-500">*</span></label>
                 <input
@@ -336,7 +328,6 @@ export default function ProdukDashboardPage() {
                 />
               </div>
 
-              {/* Harga */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Harga <span className="text-red-500">*</span></label>
                 <input
@@ -348,7 +339,6 @@ export default function ProdukDashboardPage() {
                 />
               </div>
 
-              {/* Kategori */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Kategori <span className="text-red-500">*</span></label>
                 <select
@@ -357,7 +347,6 @@ export default function ProdukDashboardPage() {
                     setForm((f) => ({
                       ...f,
                       kategori: e.target.value,
-                      // reset input custom kalau pindah dari "Lainnya" ke opsi lain
                       kategoriLainnya: e.target.value === "Lainnya" ? f.kategoriLainnya : "",
                     }))
                   }
@@ -368,8 +357,6 @@ export default function ProdukDashboardPage() {
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
-
-                {/* Input custom muncul hanya jika "Lainnya" dipilih */}
                 {form.kategori === "Lainnya" && (
                   <input
                     type="text"
@@ -382,7 +369,6 @@ export default function ProdukDashboardPage() {
                 )}
               </div>
 
-              {/* Deskripsi */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Deskripsi</label>
                 <textarea
@@ -394,7 +380,6 @@ export default function ProdukDashboardPage() {
                 />
               </div>
 
-              {/* Tampil di Homepage */}
               {(() => {
                 const homepageCount = products.filter(
                   (p) => p.tampil_di_homepage && p.id !== editingProduct?.id
@@ -427,20 +412,13 @@ export default function ProdukDashboardPage() {
                 );
               })()}
 
-              {/* Gambar */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium">Gambar Produk</label>
-
-                {/* Existing images */}
                 {existingImages.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
                     {existingImages.map((url, i) => (
                       <div key={i} className="relative w-20 h-20">
-                        <img
-                          src={url}
-                          alt={`img-${i}`}
-                          className="w-full h-full object-cover rounded-lg border"
-                        />
+                        <img src={url} alt={`img-${i}`} className="w-full h-full object-cover rounded-lg border" />
                         <button
                           onClick={() => removeExistingImage(i)}
                           className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full size-5 flex items-center justify-center"
@@ -451,17 +429,11 @@ export default function ProdukDashboardPage() {
                     ))}
                   </div>
                 )}
-
-                {/* New image previews */}
                 {newImagePreviews.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
                     {newImagePreviews.map((url, i) => (
                       <div key={i} className="relative w-20 h-20">
-                        <img
-                          src={url}
-                          alt={`new-${i}`}
-                          className="w-full h-full object-cover rounded-lg border border-dashed border-[#01341b]"
-                        />
+                        <img src={url} alt={`new-${i}`} className="w-full h-full object-cover rounded-lg border border-dashed border-[#01341b]" />
                         <button
                           onClick={() => removeNewImage(i)}
                           className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full size-5 flex items-center justify-center"
@@ -472,15 +444,7 @@ export default function ProdukDashboardPage() {
                     ))}
                   </div>
                 )}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-500 hover:border-[#01341b] hover:text-[#01341b] transition-colors w-fit"
@@ -491,13 +455,8 @@ export default function ProdukDashboardPage() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex gap-2 p-5 border-t justify-end">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={closeModal} disabled={saving} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
                 Batal
               </button>
               <button
@@ -522,11 +481,7 @@ export default function ProdukDashboardPage() {
               Yakin ingin menghapus produk <span className="font-semibold">&ldquo;{deleteTarget.nama}&rdquo;</span>? Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
                 Batal
               </button>
               <button

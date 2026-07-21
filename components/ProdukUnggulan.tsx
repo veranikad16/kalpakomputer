@@ -20,10 +20,6 @@ export function ProdukUnggulan() {
   const [loading, setLoading] = useState(true);
   const [selectedProduk, setSelectedProduk] = useState<Produk | null>(null);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("produk")
@@ -37,6 +33,11 @@ export function ProdukUnggulan() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchProducts().catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <section id="produk" className="bg-white py-14 md:py-20">
@@ -54,7 +55,6 @@ export function ProdukUnggulan() {
           </Link>
         </div>
 
-        {/* Loading */}
         {loading ? (
           <div className="text-center py-16">
             <p className="text-[#929292]">Memuat produk...</p>
@@ -64,14 +64,14 @@ export function ProdukUnggulan() {
             <p className="text-[#929292]">Belum ada produk</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-[34px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-[34px] auto-rows-fr">
             {products.map((product) => (
               <div
                 key={product.id}
-                className="flex flex-col gap-4 cursor-pointer group"
+                className="flex flex-col cursor-pointer group"
                 onClick={() => setSelectedProduk(product)}
               >
-                <div className="bg-[#f2f2f2] rounded-[15px] h-[280px] md:h-[350px] overflow-hidden flex items-center justify-center">
+                <div className="bg-[#f2f2f2] rounded-[15px] h-[280px] md:h-[350px] overflow-hidden flex items-center justify-center mb-4 flex-shrink-0">
                   {product.gambar_urls?.[0] ? (
                     <img
                       src={product.gambar_urls[0]}
@@ -82,15 +82,17 @@ export function ProdukUnggulan() {
                     <p className="text-[#929292]">Gambar Produk</p>
                   )}
                 </div>
-                <p className="font-semibold text-[17px] md:text-[18px] text-black">{product.nama}</p>
-                <p className="font-semibold text-[13px] md:text-[14px] text-[#929292]">{product.harga}</p>
-                <p className="font-semibold text-[11px] md:text-[12px] text-[#929292] tracking-wider">{product.kategori}</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
-                  className="rounded-[10px] px-4 py-3 font-semibold text-[13px] md:text-[14px] w-fit transition-colors bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white"
-                >
-                  Detail Produk
-                </button>
+                <div className="flex flex-col flex-1">
+                  <p className="font-semibold text-[17px] md:text-[18px] text-black mb-2">{product.nama}</p>
+                  <p className="font-semibold text-[13px] md:text-[14px] text-[#929292] mb-2">{product.harga}</p>
+                  <p className="font-semibold text-[11px] md:text-[12px] text-[#929292] tracking-wider mb-4">{product.kategori}</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedProduk(product); }}
+                    className="rounded-[10px] px-4 py-3 font-semibold text-[13px] md:text-[14px] w-fit transition-colors bg-[#f2f2f2] text-black hover:bg-[#01341b] hover:text-white mt-auto"
+                  >
+                    Detail Produk
+                  </button>
+                </div>
               </div>
             ))}
           </div>
