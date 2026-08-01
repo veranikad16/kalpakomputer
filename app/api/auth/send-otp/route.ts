@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   // Kirim email OTP via Resend
   await resend.emails.send({
-    from: 'onboarding@resend.dev',
+    from: 'PT Kalpa Komputer Bali <noreply@kalpakomputerbali.com>',
     to: email,
     subject: 'Kode OTP Login Admin',
     html: `
