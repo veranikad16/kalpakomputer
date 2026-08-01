@@ -96,7 +96,22 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
       });
 
       if (error) throw error;
-
+      // Kirim notifikasi email ke admin
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "workshop",
+          data: {
+            nama: formData.nama,
+            nomor_whatsapp: formData.nomor_whatsapp,
+            jenis_perangkat,
+            keluhan: formData.keluhan,
+            tanggal_masuk: formData.tanggal_masuk,
+            target_selesai: formData.target_selesai,
+          },
+        }),
+      });
       setSuccess(true);
     } catch {
       console.error("Error submitting form");

@@ -104,7 +104,24 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
       });
 
       if (error) throw error;
-
+      // Kirim notifikasi email ke admin
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "onsite",
+          data: {
+            nama: formData.nama,
+            nomor_whatsapp: formData.nomor_whatsapp,
+            alamat: formData.alamat,
+            jenis_lokasi: resolveValue(formData.jenis_lokasi, formData.jenis_lokasi_lainnya),
+            jenis_perangkat: resolveValue(formData.jenis_perangkat, formData.jenis_perangkat_lainnya),
+            jenis_layanan: resolveValue(formData.jenis_layanan, formData.jenis_layanan_lainnya),
+            keluhan: formData.keluhan,
+            tanggal_kunjungan: formData.tanggal_kunjungan,
+          },
+        }),
+      });
       setSuccess(true);
     } catch (error: unknown) {
       console.error("Error submitting form:", error);
