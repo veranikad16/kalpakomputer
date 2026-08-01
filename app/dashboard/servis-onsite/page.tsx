@@ -647,6 +647,24 @@ export default function ServisOnsitePage() {
     });
 
     sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
+    // Notifikasi WA ke teknisi
+    const pesanTeknisi = `Halo ${teknisi.nama} 👋
+
+    Kamu mendapat tugas servis on-site baru! 🔧
+
+    Detail tugas:
+    - *Pelanggan:* ${assignTarget.nama}
+    - *WhatsApp:* ${assignTarget.nomor_whatsapp}
+    - *Jenis Perangkat:* ${assignTarget.jenis_perangkat}
+    - *Jenis Layanan:* ${assignTarget.jenis_layanan}
+    - *Keluhan:* ${assignTarget.keluhan}
+    - *Tanggal Kunjungan:* ${formatDate(assignTarget.tanggal_kunjungan)}
+    - *Alamat:* ${assignTarget.alamat}
+
+    Silakan cek dashboard teknisi untuk detail lebih lanjut. Terima kasih 🙏
+    – PT. Kalpa Komputer Bali`;
+
+    sendWhatsApp(teknisi.nomor_whatsapp, pesanTeknisi);
     await fetchData();
   };
 

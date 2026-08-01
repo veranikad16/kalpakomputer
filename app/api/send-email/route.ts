@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     await resend.emails.send({
-      from: "PT Kalpa Komputer Bali <onboarding@resend.dev>",
+      from: "PT Kalpa Komputer Bali <noreply@kalpakomputerbali.com>",
       to: ADMIN_EMAIL,
       subject,
       html,
