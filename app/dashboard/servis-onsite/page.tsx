@@ -54,6 +54,7 @@ interface Teknisi {
   id: string;
   nama: string;
   nomor_whatsapp: string;
+  email?: string;
 }
 
 interface EditForm {
@@ -647,24 +648,27 @@ export default function ServisOnsitePage() {
     });
 
     sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
-    // Notifikasi WA ke teknisi
-    const pesanTeknisi = `Halo ${teknisi.nama} 👋
 
-    Kamu mendapat tugas servis on-site baru! 🔧
+    if (teknisi.email) {
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "teknisi",
+          to: teknisi.email,
+          data: {
+            nama_pelanggan: assignTarget.nama,
+            nomor_whatsapp: assignTarget.nomor_whatsapp,
+            jenis_perangkat: assignTarget.jenis_perangkat,
+            jenis_layanan: assignTarget.jenis_layanan,
+            keluhan: assignTarget.keluhan,
+            tanggal_kunjungan: assignTarget.tanggal_kunjungan,
+            alamat: assignTarget.alamat,
+          },
+        }),
+      });
+    }
 
-    Detail tugas:
-    - *Pelanggan:* ${assignTarget.nama}
-    - *WhatsApp:* ${assignTarget.nomor_whatsapp}
-    - *Jenis Perangkat:* ${assignTarget.jenis_perangkat}
-    - *Jenis Layanan:* ${assignTarget.jenis_layanan}
-    - *Keluhan:* ${assignTarget.keluhan}
-    - *Tanggal Kunjungan:* ${formatDate(assignTarget.tanggal_kunjungan)}
-    - *Alamat:* ${assignTarget.alamat}
-
-    Silakan cek dashboard teknisi untuk detail lebih lanjut. Terima kasih 🙏
-    – PT. Kalpa Komputer Bali`;
-
-    sendWhatsApp(teknisi.nomor_whatsapp, pesanTeknisi);
     await fetchData();
   };
 

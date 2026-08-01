@@ -40,13 +40,28 @@ export async function POST(req: NextRequest) {
           <tr><td><b>Target Selesai</b></td><td>${data.target_selesai}</td></tr>
         </table>
       `;
+    } else if (type === "teknisi") {
+      subject = `🔔 Tugas Servis On-Site Baru - ${data.nama_pelanggan}`;
+      html = `
+       <h2>Kamu mendapat tugas servis on-site baru! 🔧</h2>
+       <table border="1" cellpadding="8" cellspacing="0">
+          <tr><td><b>Pelanggan</b></td><td>${data.nama_pelanggan}</td></tr>
+         <tr><td><b>WhatsApp</b></td><td>${data.nomor_whatsapp}</td></tr>
+         <tr><td><b>Jenis Perangkat</b></td><td>${data.jenis_perangkat}</td></tr>
+         <tr><td><b>Jenis Layanan</b></td><td>${data.jenis_layanan}</td></tr>
+         <tr><td><b>Keluhan</b></td><td>${data.keluhan}</td></tr>
+         <tr><td><b>Tanggal Kunjungan</b></td><td>${data.tanggal_kunjungan}</td></tr>
+         <tr><td><b>Alamat</b></td><td>${data.alamat}</td></tr>
+        </table>
+     `;
     }
 
+    const toEmail = body.to || ADMIN_EMAIL;
     await resend.emails.send({
-      from: "PT Kalpa Komputer Bali <noreply@kalpakomputerbali.com>",
-      to: ADMIN_EMAIL,
-      subject,
-      html,
+        from: "PT Kalpa Komputer Bali <noreply@kalpakomputerbali.com>",
+        to: toEmail,
+        subject,
+        html,
     });
 
     return NextResponse.json({ success: true });
