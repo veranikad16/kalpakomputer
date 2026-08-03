@@ -6,7 +6,7 @@ import { PopupDetailProduk } from "@/components/PopupDetailProduk";
 import { RiSearchLine } from "@remixicon/react";
 import { supabase } from "@/lib/supabase";
 
-const heroImgUrl = "/hero.png";
+const heroImgUrl = "/hero.webp";
 
 interface Produk {
   id: string;

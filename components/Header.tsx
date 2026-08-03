@@ -10,7 +10,7 @@ const navItems = [
   { name: "Produk", href: "#produk" },
   { name: "Servis", href: "#servis" },
   { name: "Tracking Status", href: "#tracking" },
-  { name: "Kontak", href: "#kontak" },
+  { name: "Kontak Kami", href: "#kontak" },
 ];
 
 export function Header() {
