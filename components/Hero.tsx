@@ -13,7 +13,7 @@ export function Hero() {
       <div className="relative w-full overflow-hidden" style={{ height: "calc(100vh - 107px)" }}>
         {/* Background */}
         <img
-          src="/hero.png"
+          src="/hero.webp"
           alt="Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />

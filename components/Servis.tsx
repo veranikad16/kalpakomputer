@@ -15,7 +15,7 @@ export function Servis({ onWorkshopOpen, onOnsiteOpen }: ServisProps) {
           {/* Image */}
           <div className="w-full lg:w-[542px] h-[320px] md:h-[420px] lg:h-[508px] rounded-[20px] overflow-hidden shrink-0">
             <img
-              src="/servis.png"
+              src="/servis.webp"
               alt="Layanan Servis"
               className="w-full h-full object-cover"
             />
