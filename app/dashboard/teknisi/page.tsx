@@ -33,21 +33,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Plus, Pencil, Trash2, CalendarDays, History, Eye, EyeOff, MapPin, Store } from "lucide-react"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type Teknisi = {
   id: string
   nama: string
   nomor_whatsapp: string
   username: string
   password: string
+  email?: string
   created_at: string
 }
 
 type JenisJadwal = "workshop" | "onsite"
 
-// Bentuk gabungan (unified) dari servis_workshop & servis_onsite,
-// mengikuti pola yang sama seperti di dashboard teknisi (TeknisiPage),
 // supaya penugasan workshop maupun onsite sama-sama muncul di sini.
 type Jadwal = {
   id: string
@@ -116,6 +113,7 @@ function TeknisiFormModal({
   const [noWa, setNoWa] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -126,6 +124,7 @@ function TeknisiFormModal({
         setNoWa(initial?.nomor_whatsapp ?? "")
         setUsername(initial?.username ?? "")
         setPassword(initial?.password ?? "")
+        setEmail(initial?.email ?? "")
         setShowPassword(false)
       }
       init()
@@ -140,6 +139,7 @@ function TeknisiFormModal({
       nomor_whatsapp: noWa.trim(),
       username: username.trim(),
       password: password.trim(),
+      email: email.trim() || undefined,
     })
     setLoading(false)
     onClose()
@@ -153,11 +153,12 @@ function TeknisiFormModal({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label>Nama Teknisi</Label>
+            <Label>Email</Label>
             <Input
-              placeholder="Nama lengkap"
-              value={nama}
-              onChange={(e) => setNama(e.target.value)}
+              type="email"
+              placeholder="email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-1">
@@ -481,6 +482,7 @@ export default function ManajemenTeknisiPage() {
               <TableHead>Nomor WhatsApp</TableHead>
               <TableHead>Username</TableHead>
               <TableHead>Password</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Penugasan</TableHead>
               <TableHead>Aksi</TableHead>
             </TableRow>
@@ -519,6 +521,7 @@ export default function ManajemenTeknisiPage() {
                       </button>
                     </div>
                   </TableCell>
+                  <TableCell className="text-sm">{t.email ?? "-"}</TableCell>
                   <TableCell>
                     <button
                       onClick={() => handleOpenDetail(t)}
