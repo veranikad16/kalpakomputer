@@ -153,6 +153,14 @@ function TeknisiFormModal({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
+            <Label>Nama Teknisi</Label>
+            <Input
+              placeholder="Nama lengkap"
+              value={nama}
+              onChange={(e) => setNama(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
             <Label>Email</Label>
             <Input
               type="email"
