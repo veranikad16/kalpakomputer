@@ -221,11 +221,11 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div
-        className={`relative bg-white rounded-xl w-full max-h-[90vh] overflow-y-auto m-4 ${
-          showQris || errorMsg ? "max-w-sm" : "max-w-2xl"
+        className={`relative bg-white rounded-xl w-full max-h-[90vh] m-4 ${
+          showQris || errorMsg ? "max-w-sm overflow-hidden" : "max-w-2xl overflow-y-auto"
         }`}
       >
-        {!success && !errorMsg && (
+        {!showQris && !errorMsg && (
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors z-10"
@@ -234,12 +234,12 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
           </button>
         )}
 
-        {!success && !errorMsg && (
+        {!showQris && !errorMsg && (
           <div className="p-6 border-b">
             <h2 className="text-2xl font-bold text-[#1E3A5F] text-center">Ajukan Servis On-Site</h2>
           </div>
         )}
-
+        
         {/* QRIS POPUP */}
         {showQris ? (
           <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4">

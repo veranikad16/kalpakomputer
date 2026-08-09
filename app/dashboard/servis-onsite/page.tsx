@@ -47,6 +47,8 @@ interface ServisOnsite {
   tanggal_kunjungan: string;
   status: string;
   teknisi_id: string | null;
+  daerah: string | null;
+  bukti_bayar: string | null;
   created_at: string;
 }
 
@@ -587,6 +589,7 @@ export default function ServisOnsitePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ServisOnsite | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewBukti, setPreviewBukti] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -812,6 +815,8 @@ export default function ServisOnsitePage() {
                 <TableHead>Layanan</TableHead>
                 <TableHead className="min-w-[200px]">Keluhan</TableHead>
                 <TableHead>Tgl Kunjungan</TableHead>
+                <TableHead>Daerah</TableHead>
+                <TableHead>Bukti Bayar</TableHead>
                 <TableHead>Teknisi</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
@@ -904,8 +909,33 @@ export default function ServisOnsitePage() {
                           {servis.keluhan}
                         </span>
                       </TableCell>
+
                       <TableCell className="text-sm whitespace-nowrap">
                         {formatDate(servis.tanggal_kunjungan)}
+                      </TableCell>
+
+                      {/* Daerah */}
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {servis.daerah ?? "-"}
+                        </span>
+                      </TableCell>
+
+                      {/* Bukti Bayar */}
+                      <TableCell>
+                        {servis.bukti_bayar ? (
+                          <button
+                            onClick={() => setPreviewBukti(servis.bukti_bayar)}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 hover:underline transition-colors"
+                          >
+                            <RiExternalLinkLine className="size-3.5 shrink-0" />
+                            Lihat Bukti
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">
+                            Belum bayar
+                          </span>
+                        )}
                       </TableCell>
 
                       {/* Teknisi */}
@@ -1069,6 +1099,28 @@ export default function ServisOnsitePage() {
                 {deleteLoading ? "Menghapus..." : "Hapus"}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+    {/* Modal Preview Bukti Bayar */}
+      {previewBukti && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setPreviewBukti(null)}
+        >
+          <div className="relative max-w-lg w-full mx-4">
+            <button
+              onClick={() => setPreviewBukti(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300"
+            >
+              <RiCloseLine className="size-7" />
+            </button>
+            <img
+              src={previewBukti}
+              alt="Bukti Pembayaran"
+              className="w-full rounded-xl object-contain max-h-[80vh]"
+            />
           </div>
         </div>
       )}
