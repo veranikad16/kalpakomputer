@@ -36,6 +36,8 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type ApprovalStatus = "menunggu" | "disetujui" | "ditolak" | null;
+
 interface Servis {
   id: string;
   nama: string;
@@ -49,6 +51,9 @@ interface Servis {
   kode_tracking: string | null;
   teknisi_id: string | null;
   created_at: string;
+  estimasi_biaya: number | null;
+  catatan_perbaikan: string | null;
+  approval_status: ApprovalStatus;
 }
 
 interface Teknisi {
@@ -82,17 +87,42 @@ const emptyForm: ServisForm = {
 const STATUS_LIST = [
   "Menunggu Konfirmasi",
   "Dikonfirmasi",
+  "Menunggu Persetujuan",
+  "Disetujui",
   "Diproses",
   "Selesai",
   "Dibatalkan",
 ];
 
+// Status yang alurnya dikontrol pihak lain (teknisi / pelanggan), bukan admin.
+// Admin hanya bisa melihat, tidak bisa mengubah lewat dropdown di tabel ini.
+const STATUS_READONLY_DI_ADMIN = [
+  "Menunggu Persetujuan",
+  "Disetujui",
+  "Diproses",
+  "Selesai",
+];
+
 const statusStyle: Record<string, string> = {
   "Menunggu Konfirmasi": "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   Dikonfirmasi: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  "Menunggu Persetujuan": "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  Disetujui: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
   Diproses: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   Selesai: "bg-green-500/10 text-green-600 dark:text-green-400",
   Dibatalkan: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+const approvalStyle: Record<string, string> = {
+  menunggu: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  disetujui: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  ditolak: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+const approvalLabel: Record<string, string> = {
+  menunggu: "Menunggu Pelanggan",
+  disetujui: "Disetujui Pelanggan",
+  ditolak: "Ditolak Pelanggan",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,7 +130,7 @@ const statusStyle: Record<string, string> = {
 function getStatusOptions(teknisiId: string | null): string[] {
   if (teknisiId) {
     // Sudah ada teknisi: admin hanya bisa pilih Dikonfirmasi atau Dibatalkan
-    // Diproses & Selesai diupdate oleh teknisi dari dashboard teknisi
+    // Menunggu Persetujuan/Disetujui/Diproses/Selesai diupdate lewat alur teknisi & pelanggan
     return ["Dikonfirmasi", "Dibatalkan"];
   }
   // Belum ada teknisi: hanya "Menunggu Konfirmasi" dan "Dibatalkan"
@@ -114,6 +144,15 @@ function formatDate(dateStr: string | null) {
     month: "short",
     year: "numeric",
   });
+}
+
+function formatRupiah(value: number | null) {
+  if (value === null || value === undefined) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
 }
 
 function generateKodeTracking(): string {
@@ -534,6 +573,12 @@ function ServisModal({
                   </option>
                 ))}
               </select>
+              {STATUS_READONLY_DI_ADMIN.includes(form.status) && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Status ini biasanya diupdate otomatis lewat alur teknisi/pelanggan.
+                  Mengubahnya manual di sini hanya untuk keperluan koreksi data.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -735,7 +780,7 @@ export default function ServisWorkshopPage() {
           target_selesai: formatDate(assignTarget.target_selesai),
         }) +
         `\n\nTeknisi yang menangani: *${teknisi.nama}*` +
-        `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk memantau status servis di website kami.`;
+        `\n\n🔍 *Kode Tracking Status Servis Anda:*\n*${kodeTracking}*\n\nGunakan kode ini untuk mengetahui estimasi biaya dan catatan perbaikan perangkat Anda sebelum masuk ke tahap pengerjaan servis, sekaligus memantau status servis Anda di website kami.`;
 
       sendWhatsApp(assignTarget.nomor_whatsapp, pesan);
     }
@@ -965,6 +1010,9 @@ export default function ServisWorkshopPage() {
                 <TableHead>Nomor WhatsApp</TableHead>
                 <TableHead>Kode Tracking</TableHead>
                 <TableHead>Teknisi</TableHead>
+                <TableHead>Estimasi Biaya</TableHead>
+                <TableHead>Catatan Perbaikan</TableHead>
+                <TableHead>Persetujuan Pelanggan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
@@ -973,7 +1021,7 @@ export default function ServisWorkshopPage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={11}
+                    colSpan={14}
                     className="h-32 text-center text-muted-foreground"
                   >
                     Memuat data...
@@ -982,7 +1030,7 @@ export default function ServisWorkshopPage() {
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={11}
+                    colSpan={14}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -1110,17 +1158,61 @@ export default function ServisWorkshopPage() {
                       )}
                     </TableCell>
 
+                    {/* Estimasi Biaya — read-only, diinput teknisi */}
+                    <TableCell>
+                      <span
+                        className="text-sm text-foreground whitespace-nowrap"
+                        title="Diinput oleh teknisi, tidak bisa diedit di sini"
+                      >
+                        {formatRupiah(servis.estimasi_biaya)}
+                      </span>
+                    </TableCell>
+
+                    {/* Catatan Perbaikan — read-only, diinput teknisi */}
+                    <TableCell>
+                      {servis.catatan_perbaikan ? (
+                        <span
+                          className="text-sm text-muted-foreground line-clamp-2 max-w-[200px] block"
+                          title={servis.catatan_perbaikan}
+                        >
+                          {servis.catatan_perbaikan}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">
+                          Belum ada
+                        </span>
+                      )}
+                    </TableCell>
+
+                    {/* Persetujuan Pelanggan — read-only, hasil dari pelanggan di tracking */}
+                    <TableCell>
+                      {servis.approval_status ? (
+                        <span
+                          className={`inline-block border rounded px-2 py-1 text-xs font-medium whitespace-nowrap ${
+                            approvalStyle[servis.approval_status] ?? ""
+                          }`}
+                          title="Dipilih oleh pelanggan di halaman tracking, tidak bisa diubah di sini"
+                        >
+                          {approvalLabel[servis.approval_status]}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">
+                          -
+                        </span>
+                      )}
+                    </TableCell>
+
                     {/* Status */}
                     <TableCell>
-                      {servis.status === "Diproses" ||
-                      servis.status === "Selesai" ? (
-                        // Status ini diupdate oleh teknisi dari dashboard teknisi,
-                        // jadi di sisi admin cukup ditampilkan (read-only), tidak diedit di sini.
+                      {STATUS_READONLY_DI_ADMIN.includes(servis.status) ? (
+                        // Status ini diupdate lewat alur teknisi/pelanggan (input estimasi,
+                        // approval, proses, selesai), jadi di sisi admin cukup ditampilkan
+                        // (read-only), tidak diedit lewat dropdown di tabel ini.
                         <span
                           className={`inline-block border rounded px-2 py-1 text-xs font-medium ${
                             statusStyle[servis.status] ?? ""
                           }`}
-                          title="Status diupdate oleh teknisi dari dashboard teknisi"
+                          title="Status diupdate lewat alur teknisi/pelanggan"
                         >
                           {servis.status}
                         </span>

@@ -378,6 +378,12 @@ export function PopupServis({ isOpen, onClose }: PopupServisProps) {
                 Biaya pengecekan FREE
               </p>
               <p className="text-sm text-gray-500">
+                *Perangkat akan diperiksa terlebih dahulu oleh teknisi untuk menentukan estimasi biaya servis
+              </p>
+              <p className="text-sm text-gray-500">
+                *Proses pengerjaan baru akan dilanjutkan setelah pelanggan menyetujui estimasi biaya tersebut
+              </p>
+              <p className="text-sm text-gray-500">
                 *Tim kami akan menghubungi Anda untuk konfirmasi lebih lanjut
               </p>
             </div>

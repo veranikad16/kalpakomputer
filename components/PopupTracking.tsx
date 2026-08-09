@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { RiCloseLine, RiSearchLine, RiZoomInLine } from "@remixicon/react";
 
+type ApprovalStatus = "menunggu" | "disetujui" | "ditolak" | null;
+
 type TrackingData = {
   id: string;
   kode_tracking: string;
@@ -18,14 +20,18 @@ type TrackingData = {
   alamat?: string;
   status: string;
   tipe_servis: "onsite" | "workshop";
+  estimasi_biaya?: number | null;
+  catatan_perbaikan?: string | null;
+  approval_status?: ApprovalStatus;
 };
 
 const STATUS_STEPS_ONSITE = ["Dikonfirmasi", "Berangkat", "Diproses", "Selesai"];
-const STATUS_STEPS_WORKSHOP = ["Dikonfirmasi", "Diproses", "Selesai"];
+const STATUS_STEPS_WORKSHOP = ["Dikonfirmasi", "Menunggu Persetujuan", "Diproses", "Selesai"];
 
 const STATUS_DESC: Record<string, string> = {
   Dikonfirmasi: "Ajuan Anda telah dikonfirmasi oleh admin.",
   Berangkat: "Teknisi sedang dalam perjalanan menuju lokasi Anda.",
+  "Menunggu Persetujuan": "Teknisi sedang memeriksa perangkat dan menyiapkan estimasi biaya.",
   Diproses: "Teknisi sedang mengerjakan servis perangkat Anda.",
   Selesai: "Servis selesai. Terima kasih telah menggunakan layanan kami.",
 };
@@ -37,6 +43,15 @@ function formatDate(dateStr: string | null | undefined) {
     month: "long",
     year: "numeric",
   });
+}
+
+function formatRupiah(value: number | null | undefined) {
+  if (value === null || value === undefined) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
 }
 
 // Deteksi apakah value tipe_merk adalah URL gambar (hasil upload Supabase Storage)
@@ -98,6 +113,99 @@ function ImagePreviewModal({
   );
 }
 
+// ─── Section Approval Estimasi Biaya ───────────────────────────────────────────
+
+function ApprovalSection({
+  data,
+  onDecided,
+}: {
+  data: TrackingData;
+  onDecided: (newStatus: string, newApprovalStatus: ApprovalStatus) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleDecision = async (decision: "setuju" | "tolak") => {
+    const confirmMsg =
+      decision === "setuju"
+        ? "Konfirmasi lanjutkan servis dengan estimasi biaya di atas?"
+        : "Yakin ingin membatalkan servis ini? Tindakan ini tidak bisa dibatalkan.";
+    if (!confirm(confirmMsg)) return;
+
+    setLoading(true);
+    setErrorMsg("");
+
+    const updatePayload =
+      decision === "setuju"
+        ? { approval_status: "disetujui" as const, status: "Disetujui" }
+        : { approval_status: "ditolak" as const, status: "Dibatalkan" };
+
+    // Validasi ganda: hanya update baris yang memang masih berstatus "menunggu",
+    // supaya tidak bisa diklik dua kali / race condition.
+    const { data: updated, error } = await supabase
+      .from("servis_workshop")
+      .update(updatePayload)
+      .eq("id", data.id)
+      .eq("kode_tracking", data.kode_tracking)
+      .eq("approval_status", "menunggu")
+      .select()
+      .single();
+
+    setLoading(false);
+
+    if (error || !updated) {
+      setErrorMsg("Gagal memproses pilihan Anda. Silakan coba lagi atau hubungi kami.");
+      return;
+    }
+
+    onDecided(updatePayload.status, updatePayload.approval_status);
+  };
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col gap-3">
+      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+        Estimasi Biaya Servis
+      </p>
+
+      <div className="flex flex-col gap-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Estimasi Biaya</span>
+          <span className="font-bold text-black">{formatRupiah(data.estimasi_biaya)}</span>
+        </div>
+        <div>
+          <p className="text-gray-500 mb-1">Catatan Perbaikan</p>
+          <p className="font-medium text-black">{data.catatan_perbaikan || "-"}</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-600">
+        Silakan pilih apakah ingin melanjutkan servis dengan estimasi biaya di atas.
+      </p>
+
+      {errorMsg && <p className="text-xs text-red-600">{errorMsg}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => handleDecision("tolak")}
+          disabled={loading}
+          className="flex-1 border border-red-300 text-red-600 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40 hover:bg-red-50 transition-colors"
+        >
+          Tidak, Batalkan
+        </button>
+        <button
+          onClick={() => handleDecision("setuju")}
+          disabled={loading}
+          className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40 hover:bg-black/80 transition-colors"
+        >
+          {loading ? "Memproses..." : "Ya, Lanjutkan"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+
 interface PopupTrackingProps {
   open: boolean;
   onClose: () => void;
@@ -141,7 +249,7 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
         .limit(1),
       supabase
         .from("servis_workshop")
-        .select("id, kode_tracking, nama, jenis_perangkat, tipe_merk, keluhan, tanggal_masuk, target_selesai, status")
+        .select("id, kode_tracking, nama, jenis_perangkat, tipe_merk, keluhan, tanggal_masuk, target_selesai, status, estimasi_biaya, catatan_perbaikan, approval_status")
         .eq("kode_tracking", searchKode)
         .limit(1),
     ]);
@@ -177,8 +285,25 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
     setPreviewOpen(true);
   };
 
-  const STATUS_STEPS = data?.tipe_servis === "workshop" ? STATUS_STEPS_WORKSHOP : STATUS_STEPS_ONSITE;
-  const currentStep = data ? STATUS_STEPS.indexOf(data.status) : -1;
+  // Setelah pelanggan pilih lanjut/tidak, update state lokal tanpa perlu search ulang
+  const handleDecided = (newStatus: string, newApprovalStatus: ApprovalStatus) => {
+    setData((prev) =>
+      prev ? { ...prev, status: newStatus, approval_status: newApprovalStatus } : prev
+    );
+  };
+
+  const isWorkshop = data?.tipe_servis === "workshop";
+  const isDibatalkan = data?.status === "Dibatalkan";
+  const isMenungguPersetujuan = isWorkshop && data?.status === "Menunggu Persetujuan";
+
+  const STATUS_STEPS = isWorkshop ? STATUS_STEPS_WORKSHOP : STATUS_STEPS_ONSITE;
+
+  // Status "Disetujui" bukan step tersendiri di stepper — dianggap sudah
+  // melewati step "Menunggu Persetujuan" (ditampilkan selesai/centang),
+  // sambil menunggu teknisi klik "Diproses" di dashboardnya.
+  const statusUntukStep = data?.status === "Disetujui" ? "Menunggu Persetujuan" : data?.status;
+  const currentStep = data && !isDibatalkan ? STATUS_STEPS.indexOf(statusUntukStep ?? "") : -1;
+  const sudahDisetujui = data?.status === "Disetujui";
 
   if (!open) return null;
 
@@ -307,42 +432,68 @@ export function PopupTracking({ open, onClose }: PopupTrackingProps) {
                 </div>
               </div>
 
-              {/* Stepper */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Status Pengerjaan</p>
-                {STATUS_STEPS.map((step, i) => {
-                  const isDone = i < currentStep;
-                  const isActive = i === currentStep;
-                  const isPending = i > currentStep;
+              {/* Banner dibatalkan */}
+              {isDibatalkan && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3.5 flex flex-col gap-1">
+                  <p className="text-sm font-semibold text-red-600">❌ Servis Dibatalkan</p>
+                  <p className="text-xs text-red-500 leading-relaxed">
+                    {data.approval_status === "ditolak"
+                      ? "Servis ini dibatalkan karena Anda memilih untuk tidak melanjutkan setelah melihat estimasi biaya. Silahkan untuk mengambil perangkat Anda ke toko kami."
+                      : "Ajuan servis ini telah dibatalkan. Silakan hubungi kami untuk informasi lebih lanjut."}
+                  </p>
+                </div>
+              )}
 
-                  return (
-                    <div key={step} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className={`size-4 rounded-full border-2 mt-1 shrink-0 transition-colors ${
-                          isDone || isActive ? "bg-black border-black" : "bg-white border-gray-300"
-                        }`} />
-                        {i < STATUS_STEPS.length - 1 && (
-                          <div className={`w-0.5 flex-1 min-h-[32px] transition-colors ${
-                            isDone ? "bg-black" : "bg-gray-200"
+              {/* Section approval — hanya muncul saat status Menunggu Persetujuan */}
+              {isMenungguPersetujuan && (
+                <ApprovalSection data={data} onDecided={handleDecided} />
+              )}
+
+              {/* Info kecil setelah disetujui, sebelum teknisi mulai proses */}
+              {sudahDisetujui && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-xs text-teal-700">
+                  ✓ Anda sudah menyetujui estimasi biaya. Servis akan segera diproses oleh teknisi.
+                </div>
+              )}
+
+              {/* Stepper — disembunyikan kalau dibatalkan */}
+              {!isDibatalkan && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Status Pengerjaan</p>
+                  {STATUS_STEPS.map((step, i) => {
+                    const isStepDone = i < currentStep || (i === currentStep && sudahDisetujui);
+                    const isActive = i === currentStep && !sudahDisetujui;
+                    const isPending = i > currentStep;
+
+                    return (
+                      <div key={step} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`size-4 rounded-full border-2 mt-1 shrink-0 transition-colors ${
+                            isStepDone || isActive ? "bg-black border-black" : "bg-white border-gray-300"
                           }`} />
-                        )}
-                      </div>
-                      <div className={`pb-5 flex-1 ${isPending ? "opacity-35" : ""}`}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-black">{step}</p>
-                          {isActive && (
-                            <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full">Saat ini</span>
-                          )}
-                          {isDone && (
-                            <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">✓ Selesai</span>
+                          {i < STATUS_STEPS.length - 1 && (
+                            <div className={`w-0.5 flex-1 min-h-[32px] transition-colors ${
+                              isStepDone ? "bg-black" : "bg-gray-200"
+                            }`} />
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{STATUS_DESC[step]}</p>
+                        <div className={`pb-5 flex-1 ${isPending ? "opacity-35" : ""}`}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-black">{step}</p>
+                            {isActive && (
+                              <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full">Saat ini</span>
+                            )}
+                            {isStepDone && (
+                              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">✓ Selesai</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{STATUS_DESC[step]}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -16,11 +16,14 @@ import {
   CheckCircle2,
   XCircle,
   Store,
+  HourglassIcon,
+  Ban,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type JenisJadwal = "workshop" | "onsite"
+type ApprovalStatus = "menunggu" | "disetujui" | "ditolak" | null
 
 // Bentuk gabungan (unified) dari servis_workshop & servis_onsite,
 // supaya dashboard teknisi bisa menampilkan keduanya dalam satu list.
@@ -40,6 +43,9 @@ type Jadwal = {
   target_selesai: string | null // hanya untuk workshop
   status: string
   kode_tracking: string | null
+  estimasi_biaya: number | null
+  catatan_perbaikan: string | null
+  approval_status: ApprovalStatus
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -52,6 +58,14 @@ function formatTanggal(dateStr: string) {
     month: "long",
     year: "numeric",
   })
+}
+
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value)
 }
 
 function isHariIni(dateStr: string) {
@@ -75,6 +89,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
     color: "bg-blue-100 text-blue-700 border-blue-200",
     icon: <Clock className="h-3.5 w-3.5" />,
   },
+  "Menunggu Persetujuan": {
+    label: "Menunggu Persetujuan",
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+    icon: <HourglassIcon className="h-3.5 w-3.5" />,
+  },
+  "Disetujui": {
+    label: "Disetujui",
+    color: "bg-teal-100 text-teal-700 border-teal-200",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  },
   "Diproses": {
     label: "Diproses",
     color: "bg-orange-100 text-orange-700 border-orange-200",
@@ -97,16 +121,91 @@ const JENIS_BADGE: Record<JenisJadwal, string> = {
   onsite: "bg-cyan-100 text-cyan-700 border-cyan-200",
 }
 
+// ─── Form Input Estimasi ───────────────────────────────────────────────────────
+
+function FormEstimasi({
+  jadwal,
+  onSubmit,
+}: {
+  jadwal: Jadwal
+  onSubmit: (estimasiBiaya: number, catatan: string) => Promise<void>
+}) {
+  const [estimasiBiaya, setEstimasiBiaya] = useState("")
+  const [catatan, setCatatan] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleSubmit = async () => {
+    const angka = Number(estimasiBiaya.replace(/\D/g, ""))
+    if (!angka || angka <= 0) {
+      setError("Estimasi biaya wajib diisi dengan angka yang valid")
+      return
+    }
+    if (!catatan.trim()) {
+      setError("Catatan perbaikan wajib diisi")
+      return
+    }
+
+    setError("")
+    setLoading(true)
+    await onSubmit(angka, catatan.trim())
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-muted/40 rounded-xl p-4 space-y-3">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        Input Estimasi Biaya
+      </p>
+      <p className="text-xs text-muted-foreground -mt-1">
+        Setelah perangkat dicek, masukkan estimasi biaya & catatan perbaikan. Pelanggan akan
+        diminta konfirmasi lanjut/tidak sebelum servis diproses.
+      </p>
+
+      <div>
+        <label className="text-xs text-muted-foreground">Estimasi Biaya (Rp)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={estimasiBiaya}
+          onChange={(e) => setEstimasiBiaya(e.target.value)}
+          placeholder="Contoh: 250000"
+          className="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-background"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-muted-foreground">Catatan Perbaikan</label>
+        <textarea
+          value={catatan}
+          onChange={(e) => setCatatan(e.target.value)}
+          placeholder="Contoh: Ganti SSD 256GB, kerusakan pada port charging..."
+          rows={3}
+          className="w-full border border-border rounded-lg px-3 py-2 mt-1 text-sm bg-background"
+        />
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <Button onClick={handleSubmit} disabled={loading} className="w-full">
+        {loading ? "Mengirim..." : "Kirim Estimasi ke Pelanggan"}
+      </Button>
+    </div>
+  )
+}
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
 function DetailModal({
   jadwal,
   onClose,
   onUpdateStatus,
+  onSubmitEstimasi,
 }: {
   jadwal: Jadwal
   onClose: () => void
   onUpdateStatus: (jadwal: Jadwal, status: string) => Promise<void>
+  onSubmitEstimasi: (jadwal: Jadwal, estimasiBiaya: number, catatan: string) => Promise<void>
 }) {
   const [loading, setLoading] = useState(false)
   const cfg = STATUS_CONFIG[jadwal.status]
@@ -119,7 +218,16 @@ function DetailModal({
     onClose()
   }
 
+  const handleSubmitEstimasi = async (estimasiBiaya: number, catatan: string) => {
+    await onSubmitEstimasi(jadwal, estimasiBiaya, catatan)
+    onClose()
+  }
+
   const waLink = `https://wa.me/${jadwal.nomor_whatsapp.replace(/^0/, "62").replace(/\D/g, "")}`
+
+  // Servis workshop butuh alur estimasi & approval. Servis onsite tetap alur lama.
+  const perluEstimasi = jadwal.jenis === "workshop"
+  const belumAdaEstimasi = perluEstimasi && !jadwal.approval_status
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -266,32 +374,76 @@ function DetailModal({
               </div>
             </div>
           </div>
+
+          {/* Estimasi biaya & catatan perbaikan — kalau sudah pernah diinput */}
+          {perluEstimasi && jadwal.approval_status && (
+            <div className="bg-muted/40 rounded-xl p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Estimasi Biaya
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Estimasi Biaya</span>
+                  <span className="font-semibold">
+                    {jadwal.estimasi_biaya ? formatRupiah(jadwal.estimasi_biaya) : "-"}
+                  </span>
+                </div>
+                <div className="pt-1 border-t border-border">
+                  <p className="text-muted-foreground mb-1">Catatan Perbaikan</p>
+                  <p className="font-medium">{jadwal.catatan_perbaikan}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form input estimasi — hanya kalau workshop & belum pernah diinput */}
+          {belumAdaEstimasi && (
+            <FormEstimasi jadwal={jadwal} onSubmit={handleSubmitEstimasi} />
+          )}
         </div>
 
         {/* Footer — Update Status */}
-        {jadwal.status !== "Selesai" && jadwal.status !== "Dibatalkan" && (
+        {jadwal.status !== "Selesai" && jadwal.status !== "Dibatalkan" && !belumAdaEstimasi && (
           <div className="px-5 py-4 border-t border-border bg-muted/20 space-y-2">
-            <p className="text-xs text-muted-foreground mb-2">Update status:</p>
-            {jadwal.status === "Diproses" ? (
-              <Button
-                onClick={() => handleUpdate("Selesai")}
-                disabled={loading}
-                variant="default"
-                className="w-full"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                Selesai
-              </Button>
-            ) : (
-              <Button
-                onClick={() => handleUpdate("Diproses")}
-                disabled={loading}
-                variant="default"
-                className="w-full"
-              >
-                <Wrench className="h-4 w-4 mr-1.5" />
-                Diproses
-              </Button>
+            {perluEstimasi && jadwal.approval_status === "menunggu" && (
+              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-sm">
+                <HourglassIcon className="h-4 w-4 shrink-0" />
+                Menunggu konfirmasi pelanggan (lanjut/tidak)
+              </div>
+            )}
+
+            {perluEstimasi && jadwal.approval_status === "ditolak" && (
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm">
+                <Ban className="h-4 w-4 shrink-0" />
+                Pelanggan membatalkan servis ini
+              </div>
+            )}
+
+            {(!perluEstimasi || jadwal.approval_status === "disetujui") && (
+              <>
+                <p className="text-xs text-muted-foreground mb-2">Update status:</p>
+                {jadwal.status === "Diproses" ? (
+                  <Button
+                    onClick={() => handleUpdate("Selesai")}
+                    disabled={loading}
+                    variant="default"
+                    className="w-full"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                    Selesai
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleUpdate("Diproses")}
+                    disabled={loading}
+                    variant="default"
+                    className="w-full"
+                  >
+                    <Wrench className="h-4 w-4 mr-1.5" />
+                    Diproses
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -360,6 +512,9 @@ export default function TeknisiPage() {
       target_selesai: s.target_selesai,
       status: s.status,
       kode_tracking: s.kode_tracking,
+      estimasi_biaya: s.estimasi_biaya ?? null,
+      catatan_perbaikan: s.catatan_perbaikan ?? null,
+      approval_status: s.approval_status ?? null,
     }))
 
     const onsiteJadwal: Jadwal[] = (onsiteRes.data ?? []).map((s) => ({
@@ -378,6 +533,9 @@ export default function TeknisiPage() {
       target_selesai: null,
       status: s.status,
       kode_tracking: s.kode_tracking ?? null,
+      estimasi_biaya: null,
+      catatan_perbaikan: null,
+      approval_status: null,
     }))
 
     const gabungan = [...workshopJadwal, ...onsiteJadwal].sort((a, b) =>
@@ -393,7 +551,7 @@ export default function TeknisiPage() {
     if (teknisiId) fetchJadwal(teknisiId)
   }, [teknisiId])
 
-  // Update status — target tabel ditentukan dari jadwal.jenis
+  // Update status manual (dipakai untuk "Diproses" & "Selesai")
   const handleUpdateStatus = async (jadwal: Jadwal, status: string) => {
     const table = jadwal.jenis === "workshop" ? "servis_workshop" : "servis_onsite"
     const { error } = await supabase.from(table).update({ status }).eq("id", jadwal.id)
@@ -401,6 +559,32 @@ export default function TeknisiPage() {
       console.error(`Gagal update status ${table}:`, error)
       return
     }
+    if (teknisiId) await fetchJadwal(teknisiId)
+  }
+
+  // Submit estimasi biaya & catatan perbaikan — status otomatis jadi "Menunggu Persetujuan"
+  const handleSubmitEstimasi = async (
+    jadwal: Jadwal,
+    estimasiBiaya: number,
+    catatan: string
+  ) => {
+    const { error } = await supabase
+      .from("servis_workshop")
+      .update({
+        estimasi_biaya: estimasiBiaya,
+        catatan_perbaikan: catatan,
+        approval_status: "menunggu",
+        status: "Menunggu Persetujuan",
+      })
+      .eq("id", jadwal.id)
+
+    if (error) {
+      console.error("Gagal kirim estimasi:", error)
+      alert("Gagal mengirim estimasi. Coba lagi.")
+      return
+    }
+
+    // TODO: trigger notifikasi WhatsApp ke pelanggan di sini kalau sudah ada fungsinya
     if (teknisiId) await fetchJadwal(teknisiId)
   }
 
@@ -537,6 +721,7 @@ export default function TeknisiPage() {
           jadwal={selectedJadwal}
           onClose={() => setSelectedJadwal(null)}
           onUpdateStatus={handleUpdateStatus}
+          onSubmitEstimasi={handleSubmitEstimasi}
         />
       )}
     </div>
