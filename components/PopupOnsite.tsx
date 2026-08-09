@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { RiCloseLine, RiLoader4Line, RiCheckLine } from "@remixicon/react";
+import { RiCloseLine, RiLoader4Line, RiCheckLine, RiImageLine, RiUpload2Line } from "@remixicon/react";
 import { supabase } from "@/lib/supabase";
 
 interface PopupOnsiteProps {
@@ -16,6 +16,24 @@ interface PopupOnsiteProps {
 const JENIS_LOKASI = ["Rumah", "Kantor", "Sekolah", "Villa", "Toko", "Lainnya"];
 const JENIS_PERANGKAT = ["Laptop", "PC / Komputer", "Printer", "Server", "Jaringan", "Lainnya"];
 const JENIS_LAYANAN = ["Perbaikan", "Instalasi", "Maintenance", "Lainnya"];
+const ESTIMASI_TRANSPORT: Record<string, string> = {
+  // Badung
+  "Mengwi": "Rp 20.000",
+  "Canggu / Pererenan": "Rp 30.000",
+  "Kuta / Legian": "Rp 35.000",
+  "Nusa Dua / Jimbaran": "Rp 50.000",
+  // Denpasar
+  "Denpasar Barat / Utara": "Rp 30.000",
+  "Denpasar Selatan / Timur": "Rp 40.000",
+  // Gianyar
+  "Ubud / Gianyar Kota": "Rp 50.000",
+  "Klungkung": "Rp 75.000",
+  // Tabanan
+  "Tabanan Kota / Kediri": "Rp 35.000",
+  "Kerambitan / Penebel": "Rp 50.000",
+  // Lainnya
+  "Lainnya": "Hubungi kami untuk estimasi",
+};
 const MAX_TEKNISI = 2;
 
 const STATUS_AKTIF = ["Pilih Teknisi", "Dikonfirmasi", "Diproses", "Dalam Perjalanan", "Sedang Dikerjakan"];
@@ -33,6 +51,7 @@ const emptyForm = {
   jenis_layanan_lainnya: "",
   keluhan: "",
   tanggal_kunjungan: "",
+  daerah: "",
 };
 
 export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
@@ -42,6 +61,13 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
   const [tanggalPenuh, setTanggalPenuh] = useState(false);
   const [checkingTanggal, setCheckingTanggal] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
+  const [showQris, setShowQris] = useState(false);
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [buktiFile, setBuktiFile] = useState<File | null>(null);
+  const [buktiPreview, setBuktiPreview] = useState<string | null>(null);
+  const [uploadingBukti, setUploadingBukti] = useState(false);
+  const [buktiSuccess, setBuktiSuccess] = useState(false);
+  const buktiInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -100,10 +126,24 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
         jenis_layanan: resolveValue(formData.jenis_layanan, formData.jenis_layanan_lainnya),
         keluhan: formData.keluhan,
         tanggal_kunjungan: formData.tanggal_kunjungan,
+        daerah: formData.daerah || null,
         status: "Pilih Teknisi",
       });
 
       if (error) throw error;
+
+      // Simpan id untuk upload bukti bayar
+      const { data: inserted } = await supabase
+        .from("servis_onsite")
+        .select("id")
+        .eq("nama", formData.nama)
+        .eq("nomor_whatsapp", formData.nomor_whatsapp)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (inserted) setSubmittedId(inserted.id);
+
       // Kirim notifikasi email ke admin
       await fetch("/api/send-email", {
         method: "POST",
@@ -122,7 +162,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
           },
         }),
       });
-      setSuccess(true);
+      setShowQris(true);
     } catch (error: unknown) {
       console.error("Error submitting form:", error);
       setErrorMsg("Gagal mengirim pengajuan. Periksa koneksi internet Anda dan coba lagi.");
@@ -133,10 +173,47 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
   const handleClose = () => {
     setSuccess(false);
+    setShowQris(false);
+    setBuktiSuccess(false);
+    setSubmittedId(null);
+    setBuktiFile(null);
+    setBuktiPreview(null);
     setErrorMsg(null);
     setTanggalPenuh(false);
     setFormData(emptyForm);
     onClose();
+  };
+
+  const handleBuktiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBuktiFile(file);
+    setBuktiPreview(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const handleUploadBukti = async () => {
+    if (!buktiFile || !submittedId) return;
+    setUploadingBukti(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", buktiFile);
+      const res = await fetch("/api/upload", { method: "POST", body: formDataUpload });
+      const json = await res.json();
+      const buktiUrl = json.url || null;
+
+      if (buktiUrl) {
+        await supabase
+          .from("servis_onsite")
+          .update({ bukti_bayar: buktiUrl, status: "Menunggu Konfirmasi" })
+          .eq("id", submittedId);
+        setBuktiSuccess(true);
+      }
+    } catch {
+      console.error("Gagal upload bukti");
+    } finally {
+      setUploadingBukti(false);
+    }
   };
 
   return (
@@ -145,7 +222,7 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
 
       <div
         className={`relative bg-white rounded-xl w-full max-h-[90vh] overflow-y-auto m-4 ${
-          success || errorMsg ? "max-w-sm" : "max-w-2xl"
+          showQris || errorMsg ? "max-w-sm" : "max-w-2xl"
         }`}
       >
         {!success && !errorMsg && (
@@ -163,24 +240,74 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
           </div>
         )}
 
-        {/* SUCCESS POPUP */}
-        {success ? (
-          <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
-            <div className="bg-green-100 rounded-full p-3">
-              <RiCheckLine className="w-7 h-7 text-green-600" />
-            </div>
-            <h3 className="text-base font-bold text-gray-800">Terima Kasih!</h3>
-            <p className="text-gray-500 text-xs max-w-xs">
-              Pengajuan servis on-site Anda telah berhasil dikirim. Tim kami akan segera menghubungi Anda melalui WhatsApp untuk konfirmasi jadwal kunjungan.
-            </p>
-            <Button
-              onClick={handleClose}
-              className="mt-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-6 text-sm"
-            >
-              Tutup
-            </Button>
+        {/* QRIS POPUP */}
+        {showQris ? (
+          <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-4">
+            {buktiSuccess ? (
+              <>
+                <div className="bg-green-100 rounded-full p-3">
+                  <RiCheckLine className="w-7 h-7 text-green-600" />
+                </div>
+                <h3 className="text-base font-bold text-gray-800">Pembayaran Diterima!</h3>
+                <p className="text-gray-500 text-xs max-w-xs">
+                  Bukti pembayaran Anda telah dikirim. Tim kami akan segera mengkonfirmasi dan menghubungi Anda melalui WhatsApp.
+                </p>
+                <Button onClick={handleClose} className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-6 text-sm">
+                  Tutup
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-bold text-gray-800">Selesaikan Pembayaran Transport</h3>
+                <p className="text-gray-500 text-xs max-w-xs">
+                  Scan QRIS di bawah untuk membayar biaya transportasi teknisi. Estimasi: <span className="font-semibold text-orange-600">{ESTIMASI_TRANSPORT[formData.daerah] ?? "-"}</span>
+                </p>
+                <div className="w-52 h-52 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center bg-gray-50 gap-2">
+                  <p className="text-xs font-bold text-gray-500">QRIS</p>
+                  <p className="text-xs text-gray-400 text-center px-4">PT. KALPA KOMPUTER BALI</p>
+                  <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <p className="text-xs text-gray-400 text-center">QR Code</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Setelah membayar, upload bukti pembayaran di bawah</p>
+                {buktiPreview ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200">
+                    <img src={buktiPreview} alt="bukti" className="w-full max-h-48 object-contain bg-gray-50" />
+                    <button
+                      type="button"
+                      onClick={() => { setBuktiFile(null); setBuktiPreview(null); }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <RiCloseLine className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => buktiInputRef.current?.click()}
+                    className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg py-5 text-gray-400 hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+                  >
+                    <RiImageLine className="w-7 h-7" />
+                    <span className="text-sm font-medium">Upload bukti pembayaran</span>
+                  </button>
+                )}
+                <input ref={buktiInputRef} type="file" accept="image/*" className="hidden" onChange={handleBuktiChange} />
+                <Button
+                  onClick={handleUploadBukti}
+                  disabled={!buktiFile || uploadingBukti}
+                  className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                >
+                  {uploadingBukti ? (
+                    <><RiLoader4Line className="w-4 h-4 mr-2 animate-spin" />Mengupload...</>
+                  ) : (
+                    "Kirim Bukti Pembayaran"
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         ) : errorMsg ? (
+  
           /* ERROR POPUP */
           <div className="flex flex-col items-center justify-center text-center px-6 py-8 gap-3">
             <div className="bg-red-100 rounded-full p-3">
@@ -362,6 +489,33 @@ export function PopupOnsite({ isOpen, onClose }: PopupOnsiteProps) {
                 <p className="text-red-500 text-sm mt-1">
                   ⚠️ Tanggal ini sudah penuh. Silakan pilih tanggal lain.
                 </p>
+              )}
+            </div>
+            
+            {/* Daerah & Estimasi Transport */}
+            <div>
+              <Label htmlFor="daerah">Daerah / Kota *</Label>
+              <select
+                id="daerah"
+                value={formData.daerah}
+                onChange={(e) => setFormData({ ...formData, daerah: e.target.value })}
+                required
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-sm"
+              >
+                <option value="">Pilih daerah</option>
+                {Object.keys(ESTIMASI_TRANSPORT).map((daerah) => (
+                  <option key={daerah} value={daerah}>{daerah}</option>
+                ))}
+              </select>
+
+              {formData.daerah && (
+                <div className="mt-2 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-orange-700">🚗 Estimasi Biaya Transportasi</p>
+                  <p className="text-sm text-orange-600 font-medium mt-1">
+                    {ESTIMASI_TRANSPORT[formData.daerah]}
+                  </p>
+                  <p className="text-xs text-orange-500 mt-1">*Biaya transport dibayar di awal sebelum teknisi berangkat</p>
+                </div>
               )}
             </div>
 
