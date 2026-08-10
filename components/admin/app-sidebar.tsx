@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/admin/ui/sidebar"
-import { RiDashboardLine, RiListUnordered, RiBarChartLine, RiFolderLine, RiGroupLine, RiCameraLine, RiFileTextLine, RiSettingsLine, RiQuestionLine, RiSearchLine, RiDatabase2Line, RiFileChartLine, RiFileLine, RiCommandLine, RiToolsLine, RiMapPinLine, RiLogoutBoxLine } from "@remixicon/react"
+import { RiDashboardLine, RiListUnordered, RiBarChartLine, RiFolderLine, RiGroupLine, RiCameraLine, RiFileTextLine, RiSettingsLine, RiQuestionLine, RiSearchLine, RiDatabase2Line, RiFileChartLine, RiFileLine, RiCommandLine, RiToolsLine, RiMapPinLine, RiLogoutBoxLine, RiUserLine } from "@remixicon/react"
 
 const data = {
   user: {
@@ -45,6 +45,14 @@ const data = {
       url: "/dashboard/teknisi",
       icon: (
         <RiGroupLine
+        />
+      ),
+    },
+    {
+      title: "Akun Pelanggan",
+      url: "/dashboard/pelanggan",
+      icon: (
+        <RiUserLine
         />
       ),
     },
