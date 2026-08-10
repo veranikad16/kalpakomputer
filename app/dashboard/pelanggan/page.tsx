@@ -118,15 +118,13 @@ export default function PelangganPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const fetchPelanggan = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from("pelanggan")
-      .select("*")
-      .order("created_at", { ascending: false })
+  setLoading(true)
+  const res = await fetch("/api/admin/pelanggan")
+  const json = await res.json()
 
-    if (!error && data) setPelangganList(data)
-    setLoading(false)
-  }
+  if (res.ok && json.data) setPelangganList(json.data)
+  setLoading(false)
+}
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -134,22 +132,25 @@ export default function PelangganPage() {
   }, [])
 
   const handleSaveWhatsapp = async (nomor: string) => {
-    if (!editTarget) return
-    await supabase
-      .from("pelanggan")
-      .update({ nomor_whatsapp: nomor })
-      .eq("id", editTarget.id)
-    setEditTarget(null)
-    await fetchPelanggan()
-  }
+  if (!editTarget) return
+  await fetch(`/api/admin/pelanggan/${editTarget.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nomor_whatsapp: nomor }),
+  })
+  setEditTarget(null)
+  await fetchPelanggan()
+}
 
   const handleDelete = async () => {
-    if (!deleteTarget) return
-    await supabase.from("pelanggan").delete().eq("id", deleteTarget.id)
-    setDeleteTarget(null)
-    setDeleteOpen(false)
-    await fetchPelanggan()
-  }
+  if (!deleteTarget) return
+  await fetch(`/api/admin/pelanggan/${deleteTarget.id}`, {
+    method: "DELETE",
+  })
+  setDeleteTarget(null)
+  setDeleteOpen(false)
+  await fetchPelanggan()
+}
 
   const filtered = pelangganList.filter(
     (p) =>
