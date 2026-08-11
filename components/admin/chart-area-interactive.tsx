@@ -4,10 +4,8 @@ import * as React from "react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { supabase } from "@/lib/supabase"
 
-import { useIsMobile } from "@/hooks/use-mobile"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -19,17 +17,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/admin/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/admin/ui/select"
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/admin/ui/toggle-group"
+import type { TimeRange } from "@/components/admin/dashboard-time-filter"
 
 const chartConfig = {
   workshop: {
@@ -42,21 +30,24 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
+const RANGE_DAYS: Record<TimeRange, number> = {
+  "90d": 90,
+  "30d": 30,
+  "7d": 7,
+}
+
 type ChartRow = { date: string; workshop: number; onsite: number }
 
-export function ChartAreaInteractive() {
-  const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
+interface ChartAreaInteractiveProps {
+  timeRange: TimeRange
+}
+
+export function ChartAreaInteractive({ timeRange }: ChartAreaInteractiveProps) {
   const [chartData, setChartData] = React.useState<ChartRow[]>([])
 
   React.useEffect(() => {
-    if (isMobile) setTimeRange("7d")
-  }, [isMobile])
-
-  React.useEffect(() => {
     const fetchData = async () => {
-      // Hitung tanggal mulai
-      const daysToSubtract = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90
+      const daysToSubtract = RANGE_DAYS[timeRange]
       const startDate = new Date()
       startDate.setDate(startDate.getDate() - daysToSubtract)
       const startStr = startDate.toISOString().split("T")[0]
@@ -67,7 +58,7 @@ export function ChartAreaInteractive() {
         .select("created_at")
         .gte("created_at", `${startStr}T00:00:00`)
 
-      // Fetch onsite (pakai tanggal_kunjungan)
+      // Fetch onsite (pakai created_at)
       const { data: onsiteData } = await supabase
         .from("servis_onsite")
         .select("created_at")
@@ -104,46 +95,11 @@ export function ChartAreaInteractive() {
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>Total Ajuan Servis</CardTitle>
-        <CardDescription>
-          <span className="hidden @[540px]/card:block">
-            Workshop vs On-Site
-          </span>
-          <span className="@[540px]/card:hidden">Workshop vs On-Site</span>
-        </CardDescription>
-        <CardAction>
-          <ToggleGroup
-            multiple={false}
-            value={timeRange ? [timeRange] : []}
-            onValueChange={(value) => setTimeRange(value[0] ?? "90d")}
-            variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:px-4! @[767px]/card:flex"
-          >
-            <ToggleGroupItem value="90d">3 Bulan</ToggleGroupItem>
-            <ToggleGroupItem value="30d">30 Hari</ToggleGroupItem>
-            <ToggleGroupItem value="7d">7 Hari</ToggleGroupItem>
-          </ToggleGroup>
-          <Select
-            value={timeRange}
-            onValueChange={(value) => { if (value) setTimeRange(value) }}
-          >
-            <SelectTrigger
-              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
-              size="sm"
-              aria-label="Select a value"
-            >
-              <SelectValue placeholder="3 Bulan" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">3 Bulan</SelectItem>
-              <SelectItem value="30d" className="rounded-lg">30 Hari</SelectItem>
-              <SelectItem value="7d" className="rounded-lg">7 Hari</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardAction>
+        <CardDescription>Workshop vs On-Site</CardDescription>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-          <AreaChart data={chartData}>
+          <AreaChart data={chartData} margin={{ top: 20, right: 12, left: 12, bottom: 0 }}>
             <defs>
               <linearGradient id="fillWorkshop" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--color-workshop)" stopOpacity={0.8} />
@@ -184,13 +140,13 @@ export function ChartAreaInteractive() {
             />
             <Area
               dataKey="workshop"
-              type="natural"
+              type="monotone"
               fill="url(#fillWorkshop)"
               stroke="var(--color-workshop)"
             />
             <Area
               dataKey="onsite"
-              type="natural"
+              type="monotone"
               fill="url(#fillOnsite)"
               stroke="var(--color-onsite)"
             />

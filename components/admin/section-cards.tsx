@@ -11,164 +11,204 @@ import {
   CardTitle,
 } from "@/components/admin/ui/card"
 import { Badge } from "@/components/admin/ui/badge"
-import { ClipboardList, Clock, Wrench, CheckCircle2 } from "lucide-react"
+import {
+  ClipboardList,
+  Wrench,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react"
+import type { TimeRange } from "@/components/admin/dashboard-time-filter"
 
-export function SectionCards() {
-  const [totalHariIni, setTotalHariIni] = useState(0)
-  const [totalPending, setTotalPending] = useState(0)
-  const [totalDiproses, setTotalDiproses] = useState(0)
-  const [totalSelesai, setTotalSelesai] = useState(0)
+// NOTE: sesuaikan string status ini kalau penulisan di kolom `status`
+// tabel servis_workshop / servis_onsite berbeda (case-sensitive).
+const STATUS_SELESAI = "Selesai"
+const STATUS_DIBATALKAN = "Dibatalkan"
+const STATUS_AKTIF = ["Dikonfirmasi", "Diproses"]
+
+const RANGE_DAYS: Record<TimeRange, number> = {
+  "90d": 90,
+  "30d": 30,
+  "7d": 7,
+}
+
+const RANGE_LABEL: Record<TimeRange, string> = {
+  "90d": "3 Bulan",
+  "30d": "30 Hari",
+  "7d": "7 Hari",
+}
+
+type Stat = { workshop: number; onsite: number }
+const emptyStat: Stat = { workshop: 0, onsite: 0 }
+
+interface SectionCardsProps {
+  timeRange: TimeRange
+}
+
+export function SectionCards({ timeRange }: SectionCardsProps) {
+  const [total, setTotal] = useState<Stat>(emptyStat)
+  const [aktif, setAktif] = useState<Stat>(emptyStat)
+  const [selesai, setSelesai] = useState<Stat>(emptyStat)
+  const [dibatalkan, setDibatalkan] = useState<Stat>(emptyStat)
 
   useEffect(() => {
     const fetchStats = async () => {
-      const today = new Date().toISOString().split("T")[0]
+      const days = RANGE_DAYS[timeRange]
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      const startBoundary = `${startDate.toISOString().split("T")[0]}T00:00:00`
 
-      // 1. Total ajuan hari ini (onsite by tanggal_kunjungan + workshop by created_at)
-      const [{ count: onsiteHariIni }, { count: workshopHariIni }] = await Promise.all([
-        supabase
-          .from("servis_onsite")
-          .select("*", { count: "exact", head: true })
-          .gte("created_at", `${today}T00:00:00`)
-          .lte("created_at", `${today}T23:59:59`),
+      // 1. Total ajuan dalam periode terpilih
+      const [{ count: totalWorkshop }, { count: totalOnsite }] = await Promise.all([
         supabase
           .from("servis_workshop")
           .select("*", { count: "exact", head: true })
-          .gte("created_at", `${today}T00:00:00`)
-          .lte("created_at", `${today}T23:59:59`),
-      ])
-      setTotalHariIni((onsiteHariIni ?? 0) + (workshopHariIni ?? 0))
-
-      // 2. Total pending (belum dikonfirmasi)
-      const [{ count: onsitePending }, { count: workshopPending }] = await Promise.all([
+          .gte("created_at", startBoundary),
         supabase
           .from("servis_onsite")
           .select("*", { count: "exact", head: true })
-          .eq("status", "Pilih Teknisi"),
+          .gte("created_at", startBoundary),
+      ])
+      setTotal({ workshop: totalWorkshop ?? 0, onsite: totalOnsite ?? 0 })
+
+      // 2. Sedang diproses dalam periode terpilih
+      const [{ count: aktifWorkshop }, { count: aktifOnsite }] = await Promise.all([
         supabase
           .from("servis_workshop")
           .select("*", { count: "exact", head: true })
-          .eq("status", "Menunggu Konfirmasi"),
-      ])
-      setTotalPending((onsitePending ?? 0) + (workshopPending ?? 0))
-
-      // 3. Total sedang diproses
-      const [{ count: onsiteDiproses }, { count: workshopDiproses }] = await Promise.all([
+          .in("status", STATUS_AKTIF)
+          .gte("created_at", startBoundary),
         supabase
           .from("servis_onsite")
           .select("*", { count: "exact", head: true })
-          .in("status", ["Dikonfirmasi", "Diproses"]),
+          .in("status", STATUS_AKTIF)
+          .gte("created_at", startBoundary),
+      ])
+      setAktif({ workshop: aktifWorkshop ?? 0, onsite: aktifOnsite ?? 0 })
+
+      // 3. Selesai dalam periode terpilih
+      const [{ count: selesaiWorkshop }, { count: selesaiOnsite }] = await Promise.all([
         supabase
           .from("servis_workshop")
           .select("*", { count: "exact", head: true })
-          .in("status", ["Dikonfirmasi", "Diproses"]),
-      ])
-      setTotalDiproses((onsiteDiproses ?? 0) + (workshopDiproses ?? 0))
-
-      // 4. Total selesai
-      const [{ count: onsiteSelesai }, { count: workshopSelesai }] = await Promise.all([
+          .eq("status", STATUS_SELESAI)
+          .gte("created_at", startBoundary),
         supabase
           .from("servis_onsite")
           .select("*", { count: "exact", head: true })
-          .eq("status", "Selesai"),
+          .eq("status", STATUS_SELESAI)
+          .gte("created_at", startBoundary),
+      ])
+      setSelesai({ workshop: selesaiWorkshop ?? 0, onsite: selesaiOnsite ?? 0 })
+
+      // 4. Dibatalkan dalam periode terpilih
+      const [{ count: batalWorkshop }, { count: batalOnsite }] = await Promise.all([
         supabase
           .from("servis_workshop")
           .select("*", { count: "exact", head: true })
-          .eq("status", "Selesai"),
+          .eq("status", STATUS_DIBATALKAN)
+          .gte("created_at", startBoundary),
+        supabase
+          .from("servis_onsite")
+          .select("*", { count: "exact", head: true })
+          .eq("status", STATUS_DIBATALKAN)
+          .gte("created_at", startBoundary),
       ])
-      setTotalSelesai((onsiteSelesai ?? 0) + (workshopSelesai ?? 0))
+      setDibatalkan({ workshop: batalWorkshop ?? 0, onsite: batalOnsite ?? 0 })
     }
 
     fetchStats()
-  }, [])
+  }, [timeRange])
+
+  const rangeLabel = RANGE_LABEL[timeRange]
 
   return (
     <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-      
-      {/* 1. Total Ajuan Hari Ini */}
+
+      {/* 1. Total Ajuan */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Ajuan Servis</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalHariIni}
+            {total.workshop + total.onsite}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
               <ClipboardList className="h-3 w-3 mr-1" />
-              Hari Ini
+              {rangeLabel}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Workshop & On-Site
+          <div className="line-clamp-1 flex gap-2 font-medium">Workshop & On-Site</div>
+          <div className="text-muted-foreground">
+            {total.workshop} Workshop • {total.onsite} On-Site
           </div>
-          <div className="text-muted-foreground">Semua ajuan masuk hari ini</div>
         </CardFooter>
       </Card>
 
-      {/* 2. Pending */}
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Menunggu Konfirmasi</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalPending}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-              <Clock className="h-3 w-3 mr-1" />
-              Pending
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Belum dikonfirmasi admin
-          </div>
-          <div className="text-muted-foreground">Workshop & On-Site</div>
-        </CardFooter>
-      </Card>
-
-      {/* 3. Sedang Diproses */}
+      {/* 2. Sedang Diproses */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Sedang Diproses</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalDiproses}
+            {aktif.workshop + aktif.onsite}
           </CardTitle>
           <CardAction>
             <Badge variant="outline" className="text-orange-600 border-orange-300">
               <Wrench className="h-3 w-3 mr-1" />
-              Aktif
+              {rangeLabel}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Dikonfirmasi & diproses
+          <div className="line-clamp-1 flex gap-2 font-medium">Dikonfirmasi & diproses</div>
+          <div className="text-muted-foreground">
+            {aktif.workshop} Workshop • {aktif.onsite} On-Site
           </div>
-          <div className="text-muted-foreground">Workshop & On-Site</div>
         </CardFooter>
       </Card>
 
-      {/* 4. Selesai */}
+      {/* 3. Selesai */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Servis Selesai</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {totalSelesai}
+            {selesai.workshop + selesai.onsite}
           </CardTitle>
           <CardAction>
             <Badge variant="outline" className="text-emerald-600 border-emerald-300">
               <CheckCircle2 className="h-3 w-3 mr-1" />
-              Selesai
+              {rangeLabel}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Total servis selesai
+          <div className="line-clamp-1 flex gap-2 font-medium">Total servis selesai</div>
+          <div className="text-muted-foreground">
+            {selesai.workshop} Workshop • {selesai.onsite} On-Site
           </div>
-          <div className="text-muted-foreground">Workshop & On-Site</div>
+        </CardFooter>
+      </Card>
+
+      {/* 4. Dibatalkan */}
+      <Card className="@container/card">
+        <CardHeader>
+          <CardDescription>Servis Dibatalkan</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {dibatalkan.workshop + dibatalkan.onsite}
+          </CardTitle>
+          <CardAction>
+            <Badge variant="outline" className="text-red-600 border-red-300">
+              <XCircle className="h-3 w-3 mr-1" />
+              {rangeLabel}
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">Total servis dibatalkan</div>
+          <div className="text-muted-foreground">
+            {dibatalkan.workshop} Workshop • {dibatalkan.onsite} On-Site
+          </div>
         </CardFooter>
       </Card>
 
