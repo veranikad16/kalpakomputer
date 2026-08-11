@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { TentangKami } from "@/components/TentangKami";
@@ -13,6 +14,7 @@ import { PopupServis } from "@/components/PopupServis";
 import { PopupOnsite } from "@/components/PopupOnsite";
 
 export default function Home() {
+  const { requireAuth } = useAuth();
   const [popupServisOpen, setPopupServisOpen] = useState(false);
   const [popupOnsiteOpen, setPopupOnsiteOpen] = useState(false);
 
@@ -24,11 +26,11 @@ export default function Home() {
       <ProdukUnggulan />
 
       <Servis
-        onWorkshopOpen={() => setPopupServisOpen(true)}
-        onOnsiteOpen={() => setPopupOnsiteOpen(true)}
+        onWorkshopOpen={() => requireAuth(() => setPopupServisOpen(true))}
+        onOnsiteOpen={() => requireAuth(() => setPopupOnsiteOpen(true))}
       />
 
-      <TrackingStatus onPopupOpen={() => setPopupOnsiteOpen(true)} />
+      <TrackingStatus onPopupOpen={() => requireAuth(() => setPopupOnsiteOpen(true))} />
 
       <KontakKami />
       <Footer />
