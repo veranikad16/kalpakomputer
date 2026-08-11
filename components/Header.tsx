@@ -27,32 +27,43 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const checkPhone = async (userId: string) => {
-    const { data } = await supabase
+  const checkPhone = async (userId: string, userData: any) => {
+    const { data, error } = await supabase
       .from("pelanggan")
       .select("*")
       .eq("user_id", userId)
       .single();
-    setPelanggan(data);
-    if (!data?.nomor_whatsapp) setShowPhoneModal(true);
+
+    if (error || !data) {
+      await supabase.from("pelanggan").insert({
+        user_id: userId,
+        nama: userData.user_metadata?.full_name || userData.email,
+        email: userData.email,
+        foto_profil: userData.user_metadata?.avatar_url || null,
+        nomor_whatsapp: null,
+      });
+      setShowPhoneModal(true);
+    } else {
+      setPelanggan(data);
+      if (!data.nomor_whatsapp) setShowPhoneModal(true);
+    }
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) checkPhone(session.user.id);
+      if (session?.user) checkPhone(session.user.id, session.user);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) checkPhone(session.user.id);
+      if (session?.user) checkPhone(session.user.id, session.user);
       else { setPelanggan(null); }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Tutup dropdown kalau klik di luar
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -115,6 +126,7 @@ export function Header() {
 
           {/* CTA + Auth */}
           <div className="hidden lg:flex items-center gap-3">
+            
             <a
               href="https://wa.me/6285785097067?text=Halo%2C%20saya%20ingin%20bertanya%20mengenai%20layanan%20Kalpa%20Komputer%20Bali"
               target="_blank"
@@ -143,20 +155,19 @@ export function Header() {
 
                 {dropdownOpen && (
                   <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                    {/* Header dropdown */}
                     <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
                       {user.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt="profil"
-                      referrerPolicy="no-referrer"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
-                      {pelanggan?.nama?.[0] ?? "U"}
-                    </div>
-                  )}
+                        <img
+                          src={user.user_metadata.avatar_url}
+                          alt="profil"
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
+                          {pelanggan?.nama?.[0] ?? "U"}
+                        </div>
+                      )}
                       <div className="flex flex-col min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">
                           {pelanggan?.nama ?? user.user_metadata?.full_name ?? "-"}
@@ -165,7 +176,6 @@ export function Header() {
                       </div>
                     </div>
 
-                    {/* Data pelanggan */}
                     <div className="px-4 py-3 space-y-2">
                       <div>
                         <p className="text-xs text-gray-400">Nomor WhatsApp</p>
@@ -173,7 +183,6 @@ export function Header() {
                       </div>
                     </div>
 
-                    {/* Tombol keluar */}
                     <div className="px-4 py-3 border-t border-gray-100">
                       <button
                         onClick={handleSignOut}
@@ -223,6 +232,7 @@ export function Header() {
                   <img
                     src={user.user_metadata.avatar_url}
                     alt="profil"
+                    referrerPolicy="no-referrer"
                     className="w-8 h-8 rounded-full object-cover border-2 border-white"
                   />
                 )}
@@ -245,7 +255,7 @@ export function Header() {
               </button>
             )}
             
-              <a
+            <a
               href="https://wa.me/6285785097067?text=Halo%2C%20saya%20ingin%20bertanya%20mengenai%20layanan%20Kalpa%20Komputer%20Bali"
               target="_blank"
               rel="noopener noreferrer"
@@ -264,7 +274,7 @@ export function Header() {
         userId={user?.id ?? ""}
         onComplete={() => {
           setShowPhoneModal(false);
-          if (user) checkPhone(user.id);
+          if (user) checkPhone(user.id, user);
         }}
       />
     </>

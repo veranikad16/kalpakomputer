@@ -30,10 +30,29 @@ export function PhoneModal({ isOpen, userId, onComplete }: PhoneModalProps) {
     }
 
     setLoading(true);
-    const { error } = await supabase
+      
+    // Cek dulu apakah data ada
+    const { data: existing } = await supabase
       .from("pelanggan")
-      .update({ nomor_whatsapp: nomor.trim() })
-      .eq("user_id", userId);
+      .select("id")
+      .eq("user_id", userId)
+      .single();
+
+    let error;
+    if (existing) {
+      // Update
+      const result = await supabase
+        .from("pelanggan")
+        .update({ nomor_whatsapp: nomor.trim() })
+        .eq("user_id", userId);
+      error = result.error;
+    } else {
+      // Insert
+      const result = await supabase
+        .from("pelanggan")
+        .insert({ user_id: userId, nomor_whatsapp: nomor.trim() });
+      error = result.error;
+    }
 
     if (error) {
       setError("Gagal menyimpan. Coba lagi.");
