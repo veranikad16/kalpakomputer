@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
-import { AuthModal } from "@/components/AuthModal";
-import { PhoneModal } from "@/components/PhoneModal";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { RiMenu4Line, RiCloseLine } from "@remixicon/react";
@@ -17,52 +15,12 @@ const navItems = [
 ];
 
 export function Header() {
+  const { user, pelanggan, openAuthModal, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [user, setUser] = useState<Record<string, any> | null>(null);
-  const [pelanggan, setPelanggan] = useState<Record<string, any> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  const checkPhone = async (userId: string, userData: any) => {
-    const { data, error } = await supabase
-      .from("pelanggan")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (error || !data) {
-      await supabase.from("pelanggan").insert({
-        user_id: userId,
-        nama: userData.user_metadata?.full_name || userData.email,
-        email: userData.email,
-        foto_profil: userData.user_metadata?.avatar_url || null,
-        nomor_whatsapp: null,
-      });
-      setShowPhoneModal(true);
-    } else {
-      setPelanggan(data);
-      if (!data.nomor_whatsapp) setShowPhoneModal(true);
-    }
-  };
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) checkPhone(session.user.id, session.user);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) checkPhone(session.user.id, session.user);
-      else { setPelanggan(null); }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -89,10 +47,8 @@ export function Header() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     setDropdownOpen(false);
-    setUser(null);
-    setPelanggan(null);
   };
 
   return (
@@ -196,7 +152,7 @@ export function Header() {
               </div>
             ) : (
               <button
-                onClick={() => setAuthOpen(true)}
+                onClick={() => openAuthModal()}
                 className="text-white font-semibold text-sm hover:text-green-200 transition-colors"
               >
                 Masuk
@@ -248,7 +204,7 @@ export function Header() {
               </div>
             ) : (
               <button
-                onClick={() => { setMenuOpen(false); setAuthOpen(true); }}
+                onClick={() => { setMenuOpen(false); openAuthModal(); }}
                 className="text-white font-semibold text-sm text-left hover:text-green-200"
               >
                 Masuk
@@ -265,18 +221,7 @@ export function Header() {
             </a>
           </div>
         )}
-        
       </header>
-
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
-      <PhoneModal
-        isOpen={showPhoneModal}
-        userId={user?.id ?? ""}
-        onComplete={() => {
-          setShowPhoneModal(false);
-          if (user) checkPhone(user.id, user);
-        }}
-      />
     </>
   );
 }
