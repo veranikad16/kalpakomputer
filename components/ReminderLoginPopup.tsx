@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { RiInformationLine } from "@remixicon/react";
 
+// Halaman yang TIDAK perlu popup reminder login pelanggan
+const EXCLUDED_PREFIXES = ["/login-admin", "/login-teknisi", "/dashboard", "/teknisi"];
+
 export function ReminderLoginPopup() {
   const { user, loading, openAuthModal } = useAuth();
+  const pathname = usePathname();
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
 
+  const isExcluded = EXCLUDED_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
+
   useEffect(() => {
-    if (!loading && !user && !dismissed) {
+    if (!loading && !user && !dismissed && !isExcluded) {
       // sedikit delay biar tidak muncul kaget begitu halaman kebuka
       const timer = setTimeout(() => setVisible(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [loading, user, dismissed]);
+  }, [loading, user, dismissed, isExcluded]);
 
   if (!visible) return null;
 
